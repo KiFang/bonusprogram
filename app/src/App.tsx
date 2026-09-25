@@ -74,7 +74,9 @@ export function App() {
     return () => tg?.BackButton.offClick(back);
   }, [stack.length]);
 
-  useEffect(() => window.scrollTo(0, 0), [route]);
+  useEffect(() => {
+    window.scrollTo(0, 0);
+  }, [route]);
 
   if (!inTelegram) {
     return (
