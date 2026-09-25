@@ -147,7 +147,7 @@ export function DonationsScreen() {
           </div>
         ))}
         {links.length < 5 && <button className="btn btn-ghost btn-sm" onClick={() => setLinks([...links, { title: "", url: "" }])}>+ Ссылка</button>}
-        <div className="sm muted">Кнопки появятся в вашей карточке у клиентов. Деньги идут напрямую вам. Клиенты также могут задонатить звёздами — их выплачивает админ Артоки.</div>
+        <div className="sm muted">Кнопки появятся в вашей карточке у клиентов. Деньги идут напрямую вам.</div>
       </Section>
       <Section title="АРТы за донат">
         <div className="row-input">
@@ -464,7 +464,7 @@ export function ProgramScreen() {
               <input className="input" maxLength={80} placeholder="Стенд на фестивале" value={fTitle} onChange={(e) => setFTitle(e.target.value)} />
               <NumField label="Цель" value={fGoal} suffix="₽" onChange={setFGoal} />
               <button className="btn" disabled={busy || !fTitle.trim()} onClick={() => run("create_fundraiser", { title: fTitle, goal: fGoal }, "Сбор открыт")}>Открыть сбор</button>
-              <div className="sm muted">Прогресс увидят все участники группы в кошельке и смогут поддержать звёздами.</div>
+              <div className="sm muted">Прогресс увидят все участники группы в кошельке. Взносы записывайте здесь вручную.</div>
             </>
           )}
         </Section>

@@ -1,6 +1,6 @@
 // Webhook бота Артоки: команды, inline-начисление, Stars, Telegram Business, заявки художников, расписание.
 import { AppError, artistByTelegramId, rpc, upsertUser } from "../_shared/db.ts";
-import { botApi, signClaim, verifyClaim, type TgUser } from "../_shared/telegram.ts";
+import { botApi, signClaim, STARS_ENABLED, verifyClaim, type TgUser } from "../_shared/telegram.ts";
 import {
   birthdayText, donationText, esc, fmt, giftText, HELP, joinText, operationText, referralFriendText, referralText, WELCOME,
   type OperationResult,
@@ -158,7 +158,7 @@ async function onMessage(msg: {
 async function onPreCheckout(q: { id: string; from: TgUser; currency: string; total_amount: number; invoice_payload: string }) {
   let ok = false;
   try {
-    ok = q.currency === "XTR" && await rpc<boolean>("check_stars_invoice", {
+    ok = STARS_ENABLED && q.currency === "XTR" && await rpc<boolean>("check_stars_invoice", {
       p_id: q.invoice_payload, p_stars: q.total_amount, p_payer_tg: q.from.id,
     });
   } catch {
@@ -166,7 +166,7 @@ async function onPreCheckout(q: { id: string; from: TgUser; currency: string; to
   }
   await tg("answerPreCheckoutQuery", ok
     ? { pre_checkout_query_id: q.id, ok: true }
-    : { pre_checkout_query_id: q.id, ok: false, error_message: "Счёт устарел. Откройте оплату в приложении заново." });
+    : { pre_checkout_query_id: q.id, ok: false, error_message: STARS_ENABLED ? "Счёт устарел. Откройте оплату в приложении заново." : "Оплата звёздами отключена." });
 }
 
 async function onPayment(chatId: number, pay: { invoice_payload: string; telegram_payment_charge_id: string; total_amount: number }) {

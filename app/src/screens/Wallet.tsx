@@ -1,5 +1,5 @@
 import { useNav } from "../nav";
-import { StarsPay } from "../stars";
+import { StarsPay, STARS_ENABLED } from "../stars";
 import { Avatar, fmt, Icon, Progress, Section, stars, TierChip, tierColor } from "../ui";
 
 export function Wallet() {
@@ -47,7 +47,7 @@ export function Wallet() {
                   <div className="num">{fmt(p.balance)}</div>
                   <div className="cur">АРТ</div>
                 </div>
-                <div className="conv">≈ {fmt(p.balance)} ₽ · {stars(p.balance)} {Icon.star}</div>
+                <div className="conv">≈ {fmt(p.balance)} ₽{STARS_ENABLED && <> · {stars(p.balance)} {Icon.star}</>}</div>
               </div>
               <div className="row2">
                 <button className="btn btn-primary" onClick={() => push({ name: "code" })}>Показать код</button>
@@ -63,7 +63,7 @@ export function Wallet() {
                   <div style={{ width: `${Math.min(100, (p.fundraiser.raised / p.fundraiser.goal) * 100)}%`, background: "var(--ochre)" }} />
                 </div>
                 <div className="mono sm">{fmt(p.fundraiser.raised)} из {fmt(p.fundraiser.goal)} ₽</div>
-                <StarsPay kind="fundraiser" targetId={p.fundraiser.id} label="Поддержать" presets={[100, 500, 1000]} min={10} onPaid={reloadMe} />
+                {STARS_ENABLED && <StarsPay kind="fundraiser" targetId={p.fundraiser.id} label="Поддержать" presets={[100, 500, 1000]} min={10} onPaid={reloadMe} />}
               </div>
             )}
 

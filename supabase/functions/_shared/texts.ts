@@ -70,7 +70,7 @@ export function joinText(p: { name: string; type: "group" | "solo"; artists: { n
 }
 
 export const WELCOME =
-  "Это <b>Артоки</b> — бонусная программа художников.\n1 АРТ = 1 ₽ = 0,5 ★\n\n" +
+  "Это <b>Артоки</b> — бонусная программа художников.\n1 АРТ = 1 ₽\n\n" +
   "Чтобы вступить, откройте ссылку художника или отправьте /bonusp &lt;группа или ник&gt;.";
 
 export const HELP =

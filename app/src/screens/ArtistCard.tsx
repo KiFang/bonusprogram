@@ -1,7 +1,7 @@
 import { useState } from "react";
 import { call, useLoad, type Artist, type Entry, type Promotion, type Slots, type TierInfo } from "../api";
 import { useNav } from "../nav";
-import { StarsPay } from "../stars";
+import { StarsPay, STARS_ENABLED } from "../stars";
 import { haptic, openExternal } from "../tg";
 import { Avatar, dmy, ErrorBox, fmt, hm, Icon, Loading, pct, Section, tierColor } from "../ui";
 import { EntryRow } from "./History";
@@ -92,20 +92,21 @@ export function ArtistCard({ id }: { id: string }) {
         </Section>
       )}
 
-      {(a.donate_links.length > 0 || data.is_member) && (
+      {(a.donate_links.length > 0 || (STARS_ENABLED && data.is_member)) && (
         <Section title="Поддержать художника">
           {a.donate_links.length > 0 && (
             <div className="presets">
               {a.donate_links.map((l) => <button key={l.url} onClick={() => openExternal(l.url)}>{l.title} ↗</button>)}
             </div>
           )}
-          <StarsPay kind="donation" targetId={a.id} label="Задонатить" presets={[100, 300, 1000]} min={10} onPaid={reload} />
+          {STARS_ENABLED && <StarsPay kind="donation" targetId={a.id} label="Задонатить" presets={[100, 300, 1000]} min={10} onPaid={reload} />}
           {a.donation_earn_pct !== null && Number(a.donation_earn_pct) > 0 && (
             <div className="sm muted">За донат начисляется {pct(a.donation_earn_pct)}% АРТами.</div>
           )}
         </Section>
       )}
 
+      {STARS_ENABLED ? (
       <Section title="Подарочный сертификат">
         {program.type === "group" && (
           <div className="seg" role="group" aria-label="Вид сертификата">
@@ -116,6 +117,13 @@ export function ArtistCard({ id }: { id: string }) {
         <StarsPay kind="certificate" targetId={a.id} scope={giftScope} label="Купить" presets={[1000, 3000, 5000]} min={100} />
         <div className="sm muted">Сертификат придёт вам в бот — перешлите его тому, кому дарите. Можно также купить напрямую у художника.</div>
       </Section>
+      ) : (
+        <Section title="Подарочный сертификат">
+          <div className="sm muted">
+            Хотите подарить АРТы? Напишите @{a.nick}: художник выпустит сертификат{program.type === "group" ? " на себя или на всю группу" : ""} после оплаты напрямую.
+          </div>
+        </Section>
+      )}
 
       <Section title={`История у @${a.nick}`}>
         {data.history.length ? (

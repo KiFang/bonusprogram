@@ -4,6 +4,9 @@ import { useNav } from "./nav";
 import { haptic, openInvoice } from "./tg";
 import { digits, fmt } from "./ui";
 
+/** Оплата звёздами выключена: вывести звёзды в рубли художникам из РФ сложно. */
+export const STARS_ENABLED = false;
+
 type Props = {
   kind: "certificate" | "donation" | "fundraiser";
   targetId: string;
