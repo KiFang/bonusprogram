@@ -12,7 +12,7 @@
 | `supabase/functions/api` | API для Mini App (проверка Telegram initData) |
 | `supabase/functions/bot` | Webhook бота: команды, inline-начисление `@бот 3000` |
 | `supabase/tests` | Проверки логики начисления и списания |
-| `app` | Mini App (React + Vite), деплой на Netlify |
+| `app` | Mini App (React + Vite), публикуется на GitHub Pages |
 
 ## Проверки
 
@@ -24,15 +24,15 @@ cd app && npm install && npm run build
 
 ## Запуск
 
-1. **Бот.** В @BotFather: `/newbot`, затем `/setinline` (включить inline-режим, подсказка «сумма заказа»), затем `/newapp` или «Main Mini App» с адресом приложения на Netlify.
+1. **Бот.** В @BotFather: `/newbot`, затем `/setinline` (включить inline-режим, подсказка «сумма заказа»), затем `/newapp` или «Main Mini App» с адресом `https://kifang.github.io/bonusprogram/`.
 2. **Supabase.** Применить миграции из `supabase/migrations`, задеплоить функции `api` и `bot` (обе без проверки JWT: авторизация через Telegram).
 3. **Секреты функций** (Supabase → Edge Functions → Secrets):
    - `BOT_TOKEN` — токен от BotFather
    - `WEBHOOK_SECRET` — любая длинная случайная строка
-   - `APP_URL` — адрес Mini App на Netlify
+   - `APP_URL` — `https://kifang.github.io/bonusprogram/`
    - `ADMIN_TELEGRAM_IDS` — telegram id админов через запятую
    - `BOT_USERNAME` — имя бота без @ (необязательно)
-4. **Mini App.** На Netlify задать `VITE_API_URL` (`https://<ref>.supabase.co/functions/v1/api`), `VITE_SUPABASE_KEY` (publishable key), `VITE_BOT_USERNAME`.
+4. **Mini App.** Собирается и публикуется сценарием `.github/workflows/pages.yml` при пуше в `app/`. В Settings → Pages выбрать Source: GitHub Actions; имя бота задать переменной репозитория `BOT_USERNAME` (Settings → Secrets and variables → Actions → Variables).
 5. **Webhook.** Открыть `https://<ref>.supabase.co/functions/v1/bot?setup=<WEBHOOK_SECRET>` — бот получит webhook, команды и кнопку меню.
 
 ## Как начать работу
