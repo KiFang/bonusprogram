@@ -40,3 +40,21 @@ export async function artistByTelegramId(tgId: number): Promise<{ id: string; ni
   if (error) throw new Error(error.message);
   return data ? { id: data.id, nick: data.nick, program_id: data.program_id } : null;
 }
+
+// ---- файлы коллекции (приватный бакет art) ----
+
+export const ART_BUCKET = "art";
+
+/** Подписанные ссылки на картинки: действуют час, бакет закрыт. */
+export async function signArt<T extends { path: string }>(items: T[]): Promise<(T & { url: string | null })[]> {
+  if (!items.length) return [];
+  const { data } = await db.storage.from(ART_BUCKET).createSignedUrls(items.map((i) => i.path), 3600);
+  const urls = new Map((data ?? []).map((d) => [d.path, d.signedUrl]));
+  return items.map((i) => ({ ...i, url: urls.get(i.path) ?? null }));
+}
+
+export async function artistIdByUser(userId: string): Promise<string | null> {
+  const { data, error } = await db.from("artists").select("id").eq("user_id", userId).eq("active", true).maybeSingle();
+  if (error) throw new Error(error.message);
+  return data?.id ?? null;
+}

@@ -109,3 +109,55 @@ export function orderStageText(o: OrderResult): string {
 export function orderCancelText(o: OrderResult): string {
   return `@${esc(o.artist.nick)} отменил(а) заказ «${esc(o.title)}».`;
 }
+
+// ---- V1/V2 ----
+
+export function mskTime(iso: string): string {
+  return new Date(iso).toLocaleString("ru-RU", {
+    timeZone: "Europe/Moscow", day: "2-digit", month: "2-digit", hour: "2-digit", minute: "2-digit",
+  });
+}
+
+export function slotsOpenedText(nick: string, free: number | null, accessAt: string | null): string {
+  const count = free ? ` (${free})` : "";
+  const when = accessAt && new Date(accessAt).getTime() > Date.now() + 60_000
+    ? `\nДля вашего уровня запись откроется ${mskTime(accessAt)} (МСК).`
+    : "\nЗаписаться можно уже сейчас.";
+  return `@${esc(nick)} открыл(а) слоты на заказы${count}.${when}`;
+}
+
+export function slotRequestText(r: { member: { name: string; code: string }; comment: string; tier: { name: string } }): string {
+  return `Новая заявка на слот от <b>${esc(r.member.name)}</b> (${esc(r.member.code)}, уровень «${esc(r.tier.name)}»)` +
+    (r.comment ? `:\n«${esc(r.comment)}»` : ".") + "\n\nОтветьте в Mini App → Заказы.";
+}
+
+export function slotDecisionText(nick: string, accepted: boolean, title?: string): string {
+  return accepted
+    ? `@${esc(nick)} принял(а) вашу заявку. Заказ <b>«${esc(title ?? "")}»</b> в очереди.`
+    : `@${esc(nick)} пока не может взять вашу заявку. Попробуйте в следующий раз.`;
+}
+
+export function referralText(r: { friend_name: string; referrer_bonus: number; program: string }): string {
+  return `Ваш друг ${esc(r.friend_name)} сделал(а) первый заказ. <b>+${fmt(r.referrer_bonus)} АРТ</b> в «${esc(r.program)}»!`;
+}
+
+export function referralFriendText(r: { friend_bonus: number; program: string }): string {
+  return `Бонус за приглашение: <b>+${fmt(r.friend_bonus)} АРТ</b> в «${esc(r.program)}».`;
+}
+
+export function birthdayText(r: { name: string; program: string; bonus: number; ttl_days: number }): string {
+  return `С днём рождения, ${esc(r.name)}! 🎂\n«${esc(r.program)}» дарит вам <b>${fmt(r.bonus)} АРТ</b>. Они действуют ${r.ttl_days} дн.`;
+}
+
+export function donationText(r: { amount: number; points: number; artist: { nick: string }; program: { name: string }; balance_after: number }): string {
+  const pts = r.points > 0 ? `\n<b>+${fmt(r.points)} АРТ</b>, баланс «${esc(r.program.name)}»: ${fmt(r.balance_after)} АРТ` : "";
+  return `@${esc(r.artist.nick)} благодарит за донат ${fmt(r.amount)} ₽!${pts}`;
+}
+
+export function giftText(code: string, amount: number, where: string, link: string): string {
+  return `Подарочный сертификат на <b>${fmt(amount)} АРТ</b> (${esc(where)}).\n\nКод: <code>${esc(code)}</code>\nАктивировать: ${link}\n\nПерешлите это сообщение тому, кому дарите.`;
+}
+
+export function artAddedText(nick: string, title: string): string {
+  return `@${esc(nick)} добавил(а) арт к заказу «${esc(title)}». Смотрите в Mini App → Коллекция.`;
+}
