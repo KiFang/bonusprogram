@@ -27,6 +27,7 @@ export type OperationResult = {
   member: { id: string; name: string; code: string; telegram_id: number };
   artist: { id: string; nick: string };
   program: { id: string; name: string; type: "group" | "solo" };
+  order?: { id: string; title: string } | null;
 };
 
 export function operationText(r: OperationResult): string {
@@ -38,6 +39,7 @@ export function operationText(r: OperationResult): string {
     lines.push(`<b>−${fmt(r.redeem)} АРТ</b> списано у ${nick} в счёт заказа на ${fmt(r.amount)} ₽`);
     lines.push(`Доплата ${fmt(r.paid)} ₽, начислено +${fmt(r.earn)} АРТ`);
   }
+  if (r.order) lines.push(`Заказ: «${esc(r.order.title)}»`);
   lines.push(`Баланс «${esc(r.program.name)}»: ${fmt(r.balance_after)} АРТ`);
   if (r.tier_up) {
     lines.push("");
@@ -76,3 +78,34 @@ export const HELP =
   "/balance — баланс АРТов\n" +
   "/app — открыть кошелёк\n\n" +
   "Художникам: в переписке с клиентом наберите <code>@бот 3000</code>, чтобы начислить АРТы за заказ на 3 000 ₽.";
+
+export type OrderResult = {
+  title: string;
+  price: number | null;
+  stages: string[];
+  stage: number;
+  stage_name: string;
+  status: "active" | "done" | "cancelled";
+  artist: { nick: string };
+  event?: "stage" | "done" | "reopened" | null;
+};
+
+function stageLine(o: OrderResult): string {
+  return o.stages.map((s, i) => (i < o.stage ? `✓ ${esc(s)}` : i === o.stage ? `<b>● ${esc(s)}</b>` : `○ ${esc(s)}`)).join("\n");
+}
+
+export function orderCreatedText(o: OrderResult): string {
+  const price = o.price ? ` · ${fmt(o.price)} ₽` : "";
+  return `@${esc(o.artist.nick)} создал(а) заказ <b>«${esc(o.title)}»</b>${price}\n\n${stageLine(o)}`;
+}
+
+export function orderStageText(o: OrderResult): string {
+  const head = o.event === "done"
+    ? `Заказ <b>«${esc(o.title)}»</b> у @${esc(o.artist.nick)} готов!`
+    : `Заказ <b>«${esc(o.title)}»</b> у @${esc(o.artist.nick)}: этап «${esc(o.stage_name)}» (${o.stage + 1} из ${o.stages.length})`;
+  return `${head}\n\n${stageLine(o)}`;
+}
+
+export function orderCancelText(o: OrderResult): string {
+  return `@${esc(o.artist.nick)} отменил(а) заказ «${esc(o.title)}».`;
+}

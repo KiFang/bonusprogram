@@ -127,5 +127,30 @@ export type Quote = {
   tier_up: boolean;
   member: { name: string; code: string };
   program: { name: string; type: "group" | "solo" };
+  order: { id: string; title: string } | null;
+  orders?: { id: string; title: string; price: number | null; stage_name: string }[];
   entry_id?: string;
+};
+
+export type Order = {
+  id: string;
+  title: string;
+  price: number | null;
+  stages: string[];
+  stage: number;
+  stage_name: string;
+  status: "active" | "done" | "cancelled";
+  created_at: string;
+  updated_at: string;
+  done_at: string | null;
+  paid: number;
+  redeemed: number;
+  artist: { id: string; nick: string; color: string; display_name: string };
+  member: { name: string; code: string };
+};
+
+export type OrderDetail = Order & {
+  is_artist: boolean;
+  events: { kind: string; stage: number; stage_name: string; created_at: string }[];
+  payments: Entry[];
 };

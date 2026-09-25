@@ -19,4 +19,6 @@ PSQL=(psql -X -q -h "$DATA" -p "$PORT" -U postgres -d postgres -v ON_ERROR_STOP=
 for f in "$ROOT"/supabase/migrations/*.sql; do
   "${PSQL[@]}" -f "$f"
 done
-"${PSQL[@]}" -f "$ROOT/supabase/tests/ledger_test.sql" 2>&1 | sed 's/^psql:[^ ]* NOTICE:  //'
+for t in "$ROOT"/supabase/tests/*_test.sql; do
+  "${PSQL[@]}" -f "$t" 2>&1 | sed "s/^psql:[^ ]* NOTICE:  //"
+done

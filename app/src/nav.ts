@@ -8,7 +8,11 @@ export type Route =
   | { name: "history"; programId: string }
   | { name: "join"; query: string }
   | { name: "invite"; code: string }
-  | { name: "cassa"; code?: string }
+  | { name: "cassa"; code?: string; orderId?: string }
+  | { name: "orders" }
+  | { name: "myorders" }
+  | { name: "order"; id: string }
+  | { name: "neworder"; code?: string }
   | { name: "ops" }
   | { name: "clients" }
   | { name: "settings" };

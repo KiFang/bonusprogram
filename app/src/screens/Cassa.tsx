@@ -11,12 +11,13 @@ function parseCode(raw: string): string {
   return m ? m[0] : raw.trim().toUpperCase();
 }
 
-export function Cassa({ initialCode }: { initialCode?: string }) {
+export function Cassa({ initialCode, initialOrderId }: { initialCode?: string; initialOrderId?: string }) {
   const { me, toast } = useNav();
   const [code, setCode] = useState(initialCode ?? "");
   const [mode, setMode] = useState<"earn" | "redeem">("earn");
   const [amount, setAmount] = useState(0);
   const [redeem, setRedeem] = useState<number | null>(null);
+  const [orderId, setOrderId] = useState<string | null>(initialOrderId ?? null);
   const [quote, setQuote] = useState<Quote | null>(null);
   const [quoteError, setQuoteError] = useState<string | null>(null);
   const [busy, setBusy] = useState(false);
@@ -35,7 +36,7 @@ export function Cassa({ initialCode }: { initialCode?: string }) {
     const n = ++seq.current;
     const t = window.setTimeout(async () => {
       try {
-        const q = await call<Quote>("quote", { code, mode, amount: amount || 1, redeem });
+        const q = await call<Quote>("quote", { code, mode, amount: amount || 1, redeem, order_id: orderId });
         if (n === seq.current) {
           setQuote(q);
           setQuoteError(null);
@@ -48,18 +49,21 @@ export function Cassa({ initialCode }: { initialCode?: string }) {
       }
     }, 250);
     return () => window.clearTimeout(t);
-  }, [code, mode, amount, redeem, validCode]);
+  }, [code, mode, amount, redeem, orderId, validCode]);
 
   async function scan() {
     const text = await scanQr("Наведите камеру на код участника");
-    if (text) setCode(parseCode(text));
+    if (text) {
+      setCode(parseCode(text));
+      setOrderId(null);
+    }
   }
 
   async function commit() {
     if (!quote || amount <= 0) return;
     setBusy(true);
     try {
-      const r = await call<Quote>("commit", { code, mode, amount, redeem });
+      const r = await call<Quote>("commit", { code, mode, amount, redeem, order_id: orderId });
       haptic("success");
       setDone(r);
       toast(`${signed(r.points)} АРТ · ${r.member.name}`);
@@ -77,6 +81,7 @@ export function Cassa({ initialCode }: { initialCode?: string }) {
     setRedeem(null);
     setQuote(null);
     setCode("");
+    setOrderId(null);
   }
 
   const q = amount > 0 ? quote : null;
@@ -101,7 +106,10 @@ export function Cassa({ initialCode }: { initialCode?: string }) {
             placeholder="KF-0000"
             autoComplete="off"
             spellCheck={false}
-            onChange={(e) => setCode(parseCode(e.target.value))}
+            onChange={(e) => {
+              setCode(parseCode(e.target.value));
+              setOrderId(null);
+            }}
           />
           {canScanQr() && (
             <button className="btn icon" onClick={scan} aria-label="Сканировать QR-код">{Icon.scan}</button>
@@ -122,6 +130,20 @@ export function Cassa({ initialCode }: { initialCode?: string }) {
         </div>
       )}
       {quoteError && validCode && <ErrorBox message={quoteError} />}
+
+      {quote && validCode && (quote.orders?.length ?? 0) > 0 && (
+        <div className="field">
+          <label>Оплата по заказу</label>
+          <div className="presets">
+            <button aria-pressed={!orderId} className={!orderId ? "on" : ""} onClick={() => setOrderId(null)}>Без заказа</button>
+            {quote.orders!.map((o) => (
+              <button key={o.id} aria-pressed={orderId === o.id} className={orderId === o.id ? "on" : ""} onClick={() => setOrderId(o.id)}>
+                {o.title}
+              </button>
+            ))}
+          </div>
+        </div>
+      )}
 
       <div className="seg" role="group" aria-label="Тип операции">
         <button aria-pressed={mode === "earn"} onClick={() => { setMode("earn"); setRedeem(null); }}>Начислить</button>
