@@ -189,7 +189,14 @@ async function setup(url: URL) {
 Deno.serve(async (req) => {
   // Без секретов бот не работает: иначе подпись кнопок была бы предсказуемой.
   if (!BOT_TOKEN || !WEBHOOK_SECRET || WEBHOOK_SECRET.length < 16) {
-    return new Response("bot is not configured", { status: 503 });
+    const problems = [
+      !BOT_TOKEN && "BOT_TOKEN не задан",
+      !WEBHOOK_SECRET && "WEBHOOK_SECRET не задан",
+      WEBHOOK_SECRET && WEBHOOK_SECRET.length < 16 && `WEBHOOK_SECRET слишком короткий (${WEBHOOK_SECRET.length} симв., нужно от 16)`,
+    ].filter(Boolean);
+    return new Response(`Бот не настроен: ${problems.join("; ")}.\nДобавьте секреты в Supabase → Edge Functions → Secrets.`, {
+      status: 503, headers: { "content-type": "text/plain; charset=utf-8" },
+    });
   }
   const url = new URL(req.url);
   if (req.method === "GET" && url.searchParams.get("setup")) {
