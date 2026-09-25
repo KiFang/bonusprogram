@@ -14,8 +14,11 @@ import { Operations } from "./screens/Operations";
 import { Clients } from "./screens/Clients";
 import { Settings } from "./screens/Settings";
 import { ErrorBoundary } from "./ErrorBoundary";
+import { ArtistOrders, MyOrders } from "./screens/Orders";
+import { OrderDetail } from "./screens/OrderDetail";
+import { NewOrder } from "./screens/NewOrder";
 
-const ARTIST_TABS = ["cassa", "ops", "clients", "settings"] as const;
+const ARTIST_TABS = ["cassa", "orders", "ops", "clients", "settings"] as const;
 
 function initialRoute(): Route {
   const sp = tg?.initDataUnsafe?.start_param ?? "";
@@ -93,15 +96,15 @@ export function App() {
   if (error && !me) return <div className="screen"><div className="content"><ErrorBox message={error} onRetry={loadMe} /></div></div>;
   if (!nav || !me) return <div className="screen"><div className="content"><Loading /></div></div>;
 
-  const artistMode = (ARTIST_TABS as readonly string[]).includes(route.name);
+  const artistMode = (ARTIST_TABS as readonly string[]).includes(stack[0].name);
   const tabs: [Route["name"], string, JSX.Element][] = artistMode
-    ? [["cassa", "Касса", Icon.cash], ["ops", "Операции", Icon.list], ["clients", "Клиенты", Icon.people], ["settings", "Уровни", Icon.sliders]]
-    : [["wallet", "Кошелёк", Icon.wallet], ["code", "Мой код", Icon.code]];
+    ? [["cassa", "Касса", Icon.cash], ["orders", "Заказы", Icon.brush], ["ops", "Операции", Icon.list], ["clients", "Клиенты", Icon.people], ["settings", "Уровни", Icon.sliders]]
+    : [["wallet", "Кошелёк", Icon.wallet], ["myorders", "Заказы", Icon.brush], ["code", "Мой код", Icon.code]];
   const rootName = stack[0].name;
 
   return (
     <NavContext.Provider value={nav}>
-      <div className="screen">
+      <div className={"screen" + (stack.length === 1 ? "" : " no-nav")}>
         {me.artist && (
           <div className="modebar" role="group" aria-label="Режим">
             <button aria-pressed={!artistMode} onClick={() => nav.reset({ name: "wallet" })}>Кошелёк</button>
@@ -135,7 +138,11 @@ function renderRoute(r: Route) {
     case "history": return <History programId={r.programId} />;
     case "join": return <Join query={r.query} />;
     case "invite": return <Invite code={r.code} />;
-    case "cassa": return <Cassa initialCode={r.code} />;
+    case "cassa": return <Cassa initialCode={r.code} initialOrderId={r.orderId} />;
+    case "orders": return <ArtistOrders />;
+    case "myorders": return <MyOrders />;
+    case "order": return <OrderDetail id={r.id} />;
+    case "neworder": return <NewOrder code={r.code} />;
     case "ops": return <Operations />;
     case "clients": return <Clients />;
     case "settings": return <Settings />;

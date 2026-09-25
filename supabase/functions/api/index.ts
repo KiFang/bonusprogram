@@ -1,7 +1,10 @@
 // API для Mini App. Каждый запрос подписан Telegram initData (заголовок X-Telegram-Init-Data).
 import { AppError, rpc, upsertUser, type DbUser } from "../_shared/db.ts";
 import { botApi, validateInitData } from "../_shared/telegram.ts";
-import { cancelText, operationText, type OperationResult } from "../_shared/texts.ts";
+import {
+  cancelText, operationText, orderCancelText, orderCreatedText, orderStageText,
+  type OperationResult, type OrderResult,
+} from "../_shared/texts.ts";
 
 const BOT_TOKEN = Deno.env.get("BOT_TOKEN")!;
 const tg = botApi(BOT_TOKEN);
@@ -50,13 +53,13 @@ const actions: Record<string, Handler> = {
   quote: (me, p) =>
     rpc("quote_operation", {
       p_artist_user: me.id, p_member_code: String(p.code ?? ""), p_mode: String(p.mode),
-      p_amount: int(p.amount), p_redeem: int(p.redeem),
+      p_amount: int(p.amount), p_redeem: int(p.redeem), p_order: p.order_id ? String(p.order_id) : null,
     }),
 
   commit: async (me, p) => {
     const r = await rpc<OperationResult>("commit_operation", {
       p_artist_user: me.id, p_member_code: String(p.code ?? ""), p_mode: String(p.mode),
-      p_amount: int(p.amount), p_redeem: int(p.redeem),
+      p_amount: int(p.amount), p_redeem: int(p.redeem), p_order: p.order_id ? String(p.order_id) : null,
     });
     await notify(r.member.telegram_id, operationText(r));
     return r;
@@ -74,6 +77,36 @@ const actions: Record<string, Handler> = {
   settings: (me) => rpc("get_artist_settings", { p_artist_user: me.id }),
   save_settings: (me, p) =>
     rpc("save_artist_settings", { p_artist_user: me.id, p_tiers: p.tiers ?? [], p_settings: p.settings ?? {} }),
+
+  // ---- заказы ----
+  orders: (me) => rpc("artist_orders", { p_artist_user: me.id }),
+  my_orders: (me) => rpc("member_orders", { p_user: me.id }),
+  order: (me, p) => rpc("get_order", { p_user: me.id, p_order: String(p.order_id) }),
+  create_order: async (me, p) => {
+    const stages = Array.isArray(p.stages) ? p.stages.map(String) : null;
+    const o = await rpc<OrderResult & { member_telegram_id: number }>("create_order", {
+      p_artist_user: me.id, p_member_code: String(p.code ?? ""), p_title: String(p.title ?? ""),
+      p_price: int(p.price), p_stages: stages,
+    });
+    await notify(o.member_telegram_id, orderCreatedText(o));
+    return o;
+  },
+  set_stage: async (me, p) => {
+    const o = await rpc<OrderResult & { member_telegram_id: number }>("set_order_stage", {
+      p_artist_user: me.id, p_order: String(p.order_id), p_stage: int(p.stage),
+    });
+    if (o.event) await notify(o.member_telegram_id, orderStageText(o));
+    return o;
+  },
+  cancel_order: async (me, p) => {
+    const o = await rpc<OrderResult & { member_telegram_id: number }>("cancel_order", {
+      p_artist_user: me.id, p_order: String(p.order_id),
+    });
+    await notify(o.member_telegram_id, orderCancelText(o));
+    return o;
+  },
+  save_stages: (me, p) =>
+    rpc("save_order_stages", { p_artist_user: me.id, p_stages: Array.isArray(p.stages) ? p.stages.map(String) : [] }),
 
   accept_invite: (me, p) => rpc("accept_invite", { p_user: me.id, p_code: String(p.code ?? "") }),
 };

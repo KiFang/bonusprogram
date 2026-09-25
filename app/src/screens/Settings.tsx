@@ -4,7 +4,7 @@ import { useNav } from "../nav";
 import { haptic } from "../tg";
 import { ErrorBox, fmt, Icon, Loading, Section, tierColor } from "../ui";
 
-type Settings = { artist: Artist; program: Program; tiers: Tier[] };
+type Settings = { artist: Artist & { order_stages: string[] }; program: Program; tiers: Tier[] };
 type Draft = { name: string; min_spent: string; earn_pct: string; pay_pct: string; foreign_pct: string; perks: string };
 
 const toDraft = (t: Tier): Draft => ({
@@ -138,6 +138,8 @@ export function Settings() {
         </button>
       )}
 
+      <StageTemplate initial={data.artist.order_stages} />
+
       <Section title="Срок жизни АРТов">
         <div className="field">
           <label htmlFor="s-ttl">Сколько дней действуют АРТы, заработанные у вас</label>
@@ -151,5 +153,51 @@ export function Settings() {
         <button className="btn btn-primary" disabled={saving} onClick={save}>{saving ? "Сохраняем…" : "Сохранить"}</button>
       </div>
     </>
+  );
+}
+
+/** Шаблон этапов для новых заказов. Сохраняется отдельно от уровней. */
+function StageTemplate({ initial }: { initial: string[] }) {
+  const { toast } = useNav();
+  const [stages, setStages] = useState(initial);
+  const [busy, setBusy] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+  const changed = JSON.stringify(stages) !== JSON.stringify(initial);
+
+  async function save() {
+    setBusy(true);
+    setError(null);
+    try {
+      setStages(await call<string[]>("save_stages", { stages: stages.map((s) => s.trim()) }));
+      haptic("success");
+      toast("Этапы сохранены");
+    } catch (e) {
+      setError((e as Error).message);
+    } finally {
+      setBusy(false);
+    }
+  }
+
+  return (
+    <Section title="Этапы заказа">
+      <div className="stage-edit">
+        {stages.map((s, i) => (
+          <div className="row-input" key={i}>
+            <span className="mono muted sm" style={{ width: 18, alignSelf: "center" }}>{i + 1}</span>
+            <input className="input" maxLength={32} value={s} aria-label={`Этап ${i + 1}`}
+              onChange={(e) => setStages(stages.map((x, k) => (k === i ? e.target.value : x)))} />
+            {stages.length > 2 && (
+              <button className="icon-btn" aria-label={`Удалить этап ${i + 1}`} onClick={() => setStages(stages.filter((_, k) => k !== i))}>{Icon.trash}</button>
+            )}
+          </div>
+        ))}
+        {stages.length < 8 && (
+          <button className="btn btn-ghost btn-sm" onClick={() => setStages([...stages.slice(0, -1), "Новый этап", stages[stages.length - 1]])}>+ Этап</button>
+        )}
+      </div>
+      <div className="sm muted">Шаблон для новых заказов. Последний этап означает «готово».</div>
+      {error && <ErrorBox message={error} />}
+      {changed && <button className="btn" disabled={busy} onClick={save}>{busy ? "Сохраняем…" : "Сохранить этапы"}</button>}
+    </Section>
   );
 }
