@@ -1,8 +1,9 @@
 import { useNav } from "../nav";
+import { StarsPay } from "../stars";
 import { Avatar, fmt, Icon, Progress, Section, stars, TierChip, tierColor } from "../ui";
 
 export function Wallet() {
-  const { me, push, reset } = useNav();
+  const { me, push, reloadMe } = useNav();
 
   return (
     <>
@@ -11,7 +12,7 @@ export function Wallet() {
           <div className="muted sm">Привет</div>
           <div className="h2">{me.user.name}</div>
         </div>
-        <button className="code-chip" onClick={() => reset({ name: "code" })} aria-label="Показать мой код">
+        <button className="code-chip" onClick={() => push({ name: "code" })} aria-label="Показать мой код">
           <span style={{ color: "var(--ochre)", display: "flex" }}>{Icon.qr}</span>
           {me.user.code}
         </button>
@@ -49,10 +50,22 @@ export function Wallet() {
                 <div className="conv">≈ {fmt(p.balance)} ₽ · {stars(p.balance)} {Icon.star}</div>
               </div>
               <div className="row2">
-                <button className="btn btn-primary" onClick={() => reset({ name: "code" })}>Показать код</button>
+                <button className="btn btn-primary" onClick={() => push({ name: "code" })}>Показать код</button>
                 <button className="btn" onClick={() => push({ name: "history", programId: p.id })}>История</button>
               </div>
             </div>
+
+            {p.fundraiser && (
+              <div className="linkcard">
+                <div className="eyebrow">Общий сбор группы</div>
+                <div style={{ fontWeight: 600 }}>{p.fundraiser.title}</div>
+                <div className="bar-track" style={{ width: "100%" }}>
+                  <div style={{ width: `${Math.min(100, (p.fundraiser.raised / p.fundraiser.goal) * 100)}%`, background: "var(--ochre)" }} />
+                </div>
+                <div className="mono sm">{fmt(p.fundraiser.raised)} из {fmt(p.fundraiser.goal)} ₽</div>
+                <StarsPay kind="fundraiser" targetId={p.fundraiser.id} label="Поддержать" presets={[100, 500, 1000]} min={10} onPaid={reloadMe} />
+              </div>
+            )}
 
             <Section title={group ? "Ваш уровень у художников" : "Ваш уровень"} aside="по сумме заказов">
               <div className="list">

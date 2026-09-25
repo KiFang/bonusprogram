@@ -21,6 +21,8 @@ type WebApp = {
   closeScanQrPopup?(): void;
   showConfirm?(message: string, cb: (ok: boolean) => void): void;
   openTelegramLink?(url: string): void;
+  openLink?(url: string): void;
+  openInvoice?(url: string, cb: (status: "paid" | "cancelled" | "failed" | "pending") => void): void;
   isVersionAtLeast?(v: string): boolean;
 };
 
@@ -72,4 +74,24 @@ export function scanQr(text: string): Promise<string | null> {
       return true;
     });
   });
+}
+
+/** Открыть счёт Telegram Stars. Возвращает статус оплаты. */
+export function openInvoice(url: string): Promise<"paid" | "cancelled" | "failed" | "pending"> {
+  return new Promise((resolve) => {
+    if (!tg?.openInvoice) return resolve("failed");
+    tg.openInvoice(url, resolve);
+  });
+}
+
+export function openExternal(url: string) {
+  if (tg?.openLink) tg.openLink(url);
+  else window.open(url, "_blank", "noopener");
+}
+
+/** Поделиться ссылкой через выбор чата Telegram. */
+export function shareLink(url: string, text: string) {
+  const share = `https://t.me/share/url?url=${encodeURIComponent(url)}&text=${encodeURIComponent(text)}`;
+  if (tg?.openTelegramLink) tg.openTelegramLink(share);
+  else window.open(share, "_blank", "noopener");
 }

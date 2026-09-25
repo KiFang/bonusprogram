@@ -5,11 +5,12 @@ import { haptic } from "../tg";
 import { ErrorBox, fmt, Icon, Loading, Section, tierColor } from "../ui";
 
 type Settings = { artist: Artist & { order_stages: string[] }; program: Program; tiers: Tier[] };
-type Draft = { name: string; min_spent: string; earn_pct: string; pay_pct: string; foreign_pct: string; perks: string };
+type Draft = { name: string; min_spent: string; earn_pct: string; pay_pct: string; foreign_pct: string; perks: string; early_hours: string };
 
 const toDraft = (t: Tier): Draft => ({
   name: t.name, min_spent: String(t.min_spent), earn_pct: String(Number(t.earn_pct)),
   pay_pct: String(Number(t.pay_pct)), foreign_pct: String(Number(t.foreign_pct)), perks: t.perks,
+  early_hours: String(t.early_hours ?? 0),
 });
 const num = (s: string) => Number(String(s).replace(",", ".").replace(/[^\d.]/g, "")) || 0;
 const EXAMPLE = 5000;
@@ -50,6 +51,7 @@ export function Settings() {
         tiers: tiers.map((t, i) => ({
           name: t.name.trim(), min_spent: i === 0 ? 0 : Math.round(num(t.min_spent)),
           earn_pct: num(t.earn_pct), pay_pct: num(t.pay_pct), foreign_pct: num(t.foreign_pct), perks: t.perks.trim(),
+          early_hours: Math.round(num(t.early_hours)),
         })),
         settings: { foreign_mode: foreignMode, points_ttl_days: ttl.trim() ? Math.round(num(ttl)) : "", bio: bio.trim() },
       });
@@ -109,11 +111,12 @@ export function Settings() {
               <button className="icon-btn" aria-label={`Удалить уровень ${i + 1}`} onClick={() => setTiers((x) => x.filter((_, k) => k !== i))}>{Icon.trash}</button>
             )}
           </div>
-          <div className={"grid " + (byTier ? "g4" : "g3")}>
+          <div className="grid g4">
             <label>Порог, ₽<input inputMode="numeric" value={i === 0 ? "0" : t.min_spent} readOnly={i === 0} onChange={(e) => upd(i, "min_spent", e.target.value)} /></label>
             <label>Копит, %<input inputMode="decimal" value={t.earn_pct} onChange={(e) => upd(i, "earn_pct", e.target.value)} /></label>
             <label>Платит до, %<input inputMode="decimal" value={t.pay_pct} onChange={(e) => upd(i, "pay_pct", e.target.value)} /></label>
             {byTier && <label>Чужие до, %<input inputMode="decimal" value={t.foreign_pct} onChange={(e) => upd(i, "foreign_pct", e.target.value)} /></label>}
+            <label>Слоты раньше, ч<input inputMode="numeric" value={t.early_hours} onChange={(e) => upd(i, "early_hours", e.target.value)} /></label>
           </div>
           <input className="perks" aria-label={`Привилегии уровня ${i + 1}`} value={t.perks} maxLength={300} placeholder="Привилегии через «·»" onChange={(e) => upd(i, "perks", e.target.value)} />
           <div className="preview">
@@ -130,7 +133,7 @@ export function Settings() {
             setTiers([...tiers, {
               name: "Новый уровень", min_spent: String(num(last.min_spent) + 20000),
               earn_pct: String(Math.min(100, num(last.earn_pct) + 2)), pay_pct: String(Math.min(100, num(last.pay_pct) + 10)),
-              foreign_pct: last.foreign_pct, perks: "",
+              foreign_pct: last.foreign_pct, perks: "", early_hours: last.early_hours,
             }]);
           }}
         >

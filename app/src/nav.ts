@@ -15,7 +15,16 @@ export type Route =
   | { name: "neworder"; code?: string }
   | { name: "ops" }
   | { name: "clients" }
-  | { name: "settings" };
+  | { name: "settings" }
+  | { name: "collection" }
+  | { name: "profile" }
+  | { name: "gift"; code: string }
+  | { name: "more" }
+  | { name: "slots" }
+  | { name: "donations" }
+  | { name: "promotions" }
+  | { name: "certificates" }
+  | { name: "program" };
 
 export type Nav = {
   me: Me;
