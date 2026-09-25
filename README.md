@@ -12,7 +12,7 @@
 | `supabase/functions/api` | API для Mini App (проверка Telegram initData) |
 | `supabase/functions/bot` | Webhook бота: команды, inline-начисление `@бот 3000` |
 | `supabase/tests` | Проверки логики начисления и списания |
-| `app` | Mini App (React + Vite), публикуется на Cloudflare Pages |
+| `app` | Mini App (React + Vite), публикуется на Cloudflare Workers |
 
 ## Проверки
 
@@ -24,15 +24,15 @@ cd app && npm install && npm run build
 
 ## Запуск
 
-1. **Бот.** В @BotFather: `/newbot`, затем `/setinline` (включить inline-режим, подсказка «сумма заказа»), затем `/newapp` или «Main Mini App» с адресом адресом сайта на Cloudflare Pages (`https://<проект>.pages.dev`).
+1. **Бот.** В @BotFather: `/newbot`, затем `/setinline` (включить inline-режим, подсказка «сумма заказа»), затем `/newapp` или «Main Mini App» с адресом адресом сайта на Cloudflare (`https://artoki.<аккаунт>.workers.dev`).
 2. **Supabase.** Применить миграции из `supabase/migrations`, задеплоить функции `api` и `bot` (обе без проверки JWT: авторизация через Telegram).
 3. **Секреты функций** (Supabase → Edge Functions → Secrets):
    - `BOT_TOKEN` — токен от BotFather
    - `WEBHOOK_SECRET` — любая длинная случайная строка
-   - `APP_URL` — адресом сайта на Cloudflare Pages (`https://<проект>.pages.dev`)
+   - `APP_URL` — адресом сайта на Cloudflare (`https://artoki.<аккаунт>.workers.dev`)
    - `ADMIN_TELEGRAM_IDS` — telegram id админов через запятую
    - `BOT_USERNAME` — имя бота без @ (необязательно)
-4. **Mini App.** Cloudflare → Workers & Pages → Create → Pages → Connect to Git → этот репозиторий. Настройки сборки: Root directory `app`, Build command `npm run build`, Build output `dist`. Адрес API и публичный ключ уже лежат в `app/.env.production`; имя бота задать переменной `VITE_BOT_USERNAME`.
+4. **Mini App.** Cloudflare → Workers & Pages → Create → Import a repository → этот репозиторий. Build command `cd app && npm ci && npm run build`, Deploy command `npx wrangler deploy` (конфиг — `wrangler.jsonc`). Адрес API и публичный ключ лежат в `app/.env.production`; имя бота задать build-переменной `VITE_BOT_USERNAME`.
 5. **Webhook.** Открыть `https://<ref>.supabase.co/functions/v1/bot?setup=<WEBHOOK_SECRET>` — бот получит webhook, команды и кнопку меню.
 
 ## Как начать работу
