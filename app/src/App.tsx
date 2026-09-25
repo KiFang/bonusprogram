@@ -13,6 +13,7 @@ import { Cassa } from "./screens/Cassa";
 import { Operations } from "./screens/Operations";
 import { Clients } from "./screens/Clients";
 import { Settings } from "./screens/Settings";
+import { ErrorBoundary } from "./ErrorBoundary";
 
 const ARTIST_TABS = ["cassa", "ops", "clients", "settings"] as const;
 
@@ -106,7 +107,7 @@ export function App() {
           </div>
         )}
         <main className="content" key={stack.length + route.name}>
-          {renderRoute(route)}
+          <ErrorBoundary onReset={() => nav.reset({ name: "wallet" })}>{renderRoute(route)}</ErrorBoundary>
         </main>
         {stack.length === 1 && (
           <nav className="nav" style={{ gridTemplateColumns: `repeat(${tabs.length}, minmax(0, 1fr))` }}>
