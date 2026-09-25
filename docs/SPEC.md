@@ -98,7 +98,8 @@
 ```
 users              id, telegram_id, username, name, birthday, member_code, referred_by
 artists            id, user_id, nick, bio, links jsonb, donate_links jsonb, status (invited|pending|active),
-                   foreign_mode (unlimited|by_tier), slots_mode (open|rest|unlimited), slots_total
+                   foreign_mode (unlimited|by_tier), points_ttl_days, donation_earn_pct,
+                   slots_mode (open|rest|unlimited), slots_total
 programs           id, type (group|solo), name, slug, owner_id, settings jsonb (birthday, referral)
 program_artists    program_id, artist_id, role (admin|member)
 tiers              id, artist_id, sort, name, min_spent, earn_pct, pay_pct, foreign_pct, perks, early_access_hours
@@ -125,8 +126,8 @@ artist_applications id, user_id, payload jsonb, status, reviewed_by
 2. **v1:** заказы и статусы, слоты, коллекция артов, «Приведи друга», день рождения, донат-ссылки.
 3. **v2:** сертификаты, акции, `/addart` через Telegram Business, заявки художников, оплата и донаты через Stars, общий сбор группы.
 
-## 13. Открытые вопросы
+## 13. Решения по деталям
 
-- Засчитываются ли покупки по сертификату в сумму для уровня и действует ли на них лимит `pay_pct`? Предложение: сертификат — это как деньги, лимит не действует, в уровень засчитывается.
-- Начисляются ли АРТы за донаты по умолчанию?
-- Сгорают ли обычные АРТы (например, через 12 месяцев без заказов)?
+- **Сертификаты.** Сертификат художника зачисляется как АРТы этого художника (`origin_artist_id` = художник). Если художник состоит в группе, то у коллег с режимом `by_tier` такие АРТы считаются чужими, и их лимит действует. Сертификат группы зачисляется без художника-источника и не считается чужим ни для кого.
+- **Донаты.** АРТы за донаты начисляются, только если художник это включил.
+- **Сгорание.** АРТы не сгорают. Художник может задать срок жизни (`points_ttl_days`) для АРТов, заработанных у него.
