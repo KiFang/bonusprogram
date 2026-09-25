@@ -187,6 +187,10 @@ async function setup(url: URL) {
 }
 
 Deno.serve(async (req) => {
+  // Без секретов бот не работает: иначе подпись кнопок была бы предсказуемой.
+  if (!BOT_TOKEN || !WEBHOOK_SECRET || WEBHOOK_SECRET.length < 16) {
+    return new Response("bot is not configured", { status: 503 });
+  }
   const url = new URL(req.url);
   if (req.method === "GET" && url.searchParams.get("setup")) {
     if (url.searchParams.get("setup") !== WEBHOOK_SECRET) return new Response("forbidden", { status: 403 });

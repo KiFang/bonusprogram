@@ -81,6 +81,7 @@ const actions: Record<string, Handler> = {
 Deno.serve(async (req) => {
   if (req.method === "OPTIONS") return new Response(null, { headers: CORS });
   if (req.method !== "POST") return json({ error: "Method not allowed" }, 405);
+  if (!BOT_TOKEN) return json({ error: "Сервер ещё не настроен" }, 503);
 
   const auth = await validateInitData(req.headers.get("x-telegram-init-data") ?? "", BOT_TOKEN);
   if (!auth) return json({ error: "Откройте приложение из Telegram" }, 401);
