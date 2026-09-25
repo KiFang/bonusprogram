@@ -166,3 +166,16 @@ button.li:active { background: #121116; }
 .presets button.on { border-color: var(--ochre); color: var(--ochre); background: var(--ochre-bg); }
 .screen.no-nav .content { padding-bottom: calc(24px + env(safe-area-inset-bottom, 0px)); }
 .screen.no-nav .cta { bottom: env(safe-area-inset-bottom, 0px); margin-bottom: -24px; padding-bottom: 16px; }
+
+/* V1/V2 */
+.seg.seg3 { grid-template-columns: repeat(3, minmax(0, 1fr)); }
+.textarea { height: auto; min-height: 84px; padding: 10px 12px; resize: vertical; line-height: 1.45; font-family: var(--body); }
+select.input { appearance: none; background-image: linear-gradient(45deg, transparent 50%, var(--muted) 50%), linear-gradient(135deg, var(--muted) 50%, transparent 50%); background-position: calc(100% - 16px) 19px, calc(100% - 11px) 19px; background-size: 5px 5px; background-repeat: no-repeat; }
+.gallery-grid { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 6px; }
+.thumb { position: relative; aspect-ratio: 1; border-radius: 10px; overflow: hidden; border: 1px solid var(--line); background: var(--s1); padding: 0; }
+.thumb img { width: 100%; height: 100%; object-fit: cover; display: block; }
+.thumb.is-hidden img { opacity: .35; }
+.thumb-badge { position: absolute; left: 6px; bottom: 6px; font: 600 10px var(--body); padding: 2px 6px; border-radius: 6px; background: rgba(11,10,13,.8); color: var(--text); }
+.lightbox { position: fixed; inset: 0; z-index: 20; background: rgba(5,4,7,.94); display: flex; flex-direction: column; align-items: center; justify-content: center; padding: 16px; gap: 12px; }
+.lightbox img { max-width: 100%; max-height: calc(100vh - 140px); object-fit: contain; border-radius: 12px; }
+.lightbox-bar { width: 100%; max-width: 528px; display: flex; flex-direction: column; gap: 10px; }

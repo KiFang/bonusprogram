@@ -17,13 +17,18 @@ import { ErrorBoundary } from "./ErrorBoundary";
 import { ArtistOrders, MyOrders } from "./screens/Orders";
 import { OrderDetail } from "./screens/OrderDetail";
 import { NewOrder } from "./screens/NewOrder";
+import { Collection } from "./screens/Collection";
+import { Profile } from "./screens/Profile";
+import { Gift } from "./screens/Gift";
+import { CertificatesScreen, DonationsScreen, More, ProgramScreen, PromotionsScreen, SlotsScreen } from "./screens/ArtistTools";
 
-const ARTIST_TABS = ["cassa", "orders", "ops", "clients", "settings"] as const;
+const ARTIST_TABS = ["cassa", "orders", "clients", "ops", "more"] as const;
 
 function initialRoute(): Route {
   const sp = tg?.initDataUnsafe?.start_param ?? "";
   if (sp.startsWith("j_")) return { name: "join", query: sp.slice(2) };
   if (sp.startsWith("inv_")) return { name: "invite", code: sp.slice(4) };
+  if (sp.startsWith("gift_")) return { name: "gift", code: sp.slice(5) };
   return { name: "wallet" };
 }
 
@@ -44,7 +49,11 @@ export function App() {
   }, []);
 
   useEffect(() => {
-    if (inTelegram) loadMe();
+    if (!inTelegram) return;
+    const sp = tg?.initDataUnsafe?.start_param ?? "";
+    // Реферальная ссылка: запоминаем пригласившего до первой загрузки кошелька.
+    const ref = sp.startsWith("ref_") ? call("set_referrer", { code: sp.slice(4) }).catch(() => null) : Promise.resolve(null);
+    ref.then(loadMe);
   }, [loadMe]);
 
   const route = stack[stack.length - 1];
@@ -98,8 +107,8 @@ export function App() {
 
   const artistMode = (ARTIST_TABS as readonly string[]).includes(stack[0].name);
   const tabs: [Route["name"], string, JSX.Element][] = artistMode
-    ? [["cassa", "Касса", Icon.cash], ["orders", "Заказы", Icon.brush], ["ops", "Операции", Icon.list], ["clients", "Клиенты", Icon.people], ["settings", "Уровни", Icon.sliders]]
-    : [["wallet", "Кошелёк", Icon.wallet], ["myorders", "Заказы", Icon.brush], ["code", "Мой код", Icon.code]];
+    ? [["cassa", "Касса", Icon.cash], ["orders", "Заказы", Icon.brush], ["clients", "Клиенты", Icon.people], ["ops", "Операции", Icon.list], ["more", "Настройки", Icon.sliders]]
+    : [["wallet", "Кошелёк", Icon.wallet], ["myorders", "Заказы", Icon.brush], ["collection", "Коллекция", Icon.image], ["profile", "Профиль", Icon.user]];
   const rootName = stack[0].name;
 
   return (
@@ -143,6 +152,15 @@ function renderRoute(r: Route) {
     case "myorders": return <MyOrders />;
     case "order": return <OrderDetail id={r.id} />;
     case "neworder": return <NewOrder code={r.code} />;
+    case "collection": return <Collection />;
+    case "profile": return <Profile />;
+    case "gift": return <Gift code={r.code} />;
+    case "more": return <More />;
+    case "slots": return <SlotsScreen />;
+    case "donations": return <DonationsScreen />;
+    case "promotions": return <PromotionsScreen />;
+    case "certificates": return <CertificatesScreen />;
+    case "program": return <ProgramScreen />;
     case "ops": return <Operations />;
     case "clients": return <Clients />;
     case "settings": return <Settings />;

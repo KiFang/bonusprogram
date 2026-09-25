@@ -14,7 +14,7 @@ function parseCode(raw: string): string {
 export function Cassa({ initialCode, initialOrderId }: { initialCode?: string; initialOrderId?: string }) {
   const { me, toast } = useNav();
   const [code, setCode] = useState(initialCode ?? "");
-  const [mode, setMode] = useState<"earn" | "redeem">("earn");
+  const [mode, setMode] = useState<"earn" | "redeem" | "donate">("earn");
   const [amount, setAmount] = useState(0);
   const [redeem, setRedeem] = useState<number | null>(null);
   const [orderId, setOrderId] = useState<string | null>(initialOrderId ?? null);
@@ -36,7 +36,7 @@ export function Cassa({ initialCode, initialOrderId }: { initialCode?: string; i
     const n = ++seq.current;
     const t = window.setTimeout(async () => {
       try {
-        const q = await call<Quote>("quote", { code, mode, amount: amount || 1, redeem, order_id: orderId });
+        const q = await call<Quote>("quote", { code, mode: mode === "donate" ? "earn" : mode, amount: amount || 1, redeem, order_id: orderId });
         if (n === seq.current) {
           setQuote(q);
           setQuoteError(null);
@@ -63,6 +63,13 @@ export function Cassa({ initialCode, initialOrderId }: { initialCode?: string; i
     if (!quote || amount <= 0) return;
     setBusy(true);
     try {
+      if (mode === "donate") {
+        const d = await call<{ points: number }>("donation", { code, amount });
+        haptic("success");
+        setDone({ ...quote, points: d.points });
+        toast(`Донат отмечен${d.points ? ` · +${fmt(d.points)} АРТ` : ""}`);
+        return;
+      }
       const r = await call<Quote>("commit", { code, mode, amount, redeem, order_id: orderId });
       haptic("success");
       setDone(r);
@@ -86,11 +93,12 @@ export function Cassa({ initialCode, initialOrderId }: { initialCode?: string; i
 
   const q = amount > 0 ? quote : null;
   const overLimit = mode === "redeem" && q && redeem !== null && redeem > q.max_redeem;
-  const canCommit = !!q && !busy && !overLimit && (mode === "earn" || q.redeem > 0);
+  const canCommit = !!q && !busy && !overLimit && (mode !== "redeem" || q.redeem > 0);
   const label =
     !validCode ? "Введите код участника"
       : amount <= 0 ? "Введите сумму"
       : !q ? "Считаем…"
+      : mode === "donate" ? `Отметить донат ${fmt(amount)} ₽`
       : mode === "earn" ? `Начислить ${fmt(q.earn)} АРТ`
       : q.redeem > 0 ? `Списать ${fmt(q.redeem)} АРТ` : "Нечего списать";
 
@@ -131,7 +139,7 @@ export function Cassa({ initialCode, initialOrderId }: { initialCode?: string; i
       )}
       {quoteError && validCode && <ErrorBox message={quoteError} />}
 
-      {quote && validCode && (quote.orders?.length ?? 0) > 0 && (
+      {quote && validCode && mode !== "donate" && (quote.orders?.length ?? 0) > 0 && (
         <div className="field">
           <label>Оплата по заказу</label>
           <div className="presets">
@@ -145,13 +153,14 @@ export function Cassa({ initialCode, initialOrderId }: { initialCode?: string; i
         </div>
       )}
 
-      <div className="seg" role="group" aria-label="Тип операции">
+      <div className="seg seg3" role="group" aria-label="Тип операции">
         <button aria-pressed={mode === "earn"} onClick={() => { setMode("earn"); setRedeem(null); }}>Начислить</button>
-        <button aria-pressed={mode === "redeem"} onClick={() => setMode("redeem")}>Списать АРТы</button>
+        <button aria-pressed={mode === "redeem"} onClick={() => setMode("redeem")}>Списать</button>
+        <button aria-pressed={mode === "donate"} onClick={() => { setMode("donate"); setRedeem(null); setOrderId(null); }}>Донат</button>
       </div>
 
       <div className="field">
-        <label htmlFor="f-amount">{mode === "earn" ? "Клиент оплатил" : "Сумма заказа"}</label>
+        <label htmlFor="f-amount">{mode === "earn" ? "Клиент оплатил" : mode === "donate" ? "Сумма доната" : "Сумма заказа"}</label>
         <div className="amount">
           <input
             id="f-amount"
@@ -191,9 +200,13 @@ export function Cassa({ initialCode, initialOrderId }: { initialCode?: string; i
 
       {q && !done && (
         <div className="summary">
-          {mode === "earn" ? (
+          {mode === "donate" ? (
+            <div className="kv"><span className="muted">АРТы за донат</span><span>по вашей ставке (Настройки → Донаты)</span></div>
+          ) : mode === "earn" ? (
             <>
               <div className="kv"><span className="muted">Уровень клиента</span><span>{q.tier.name} · {pct(q.tier.earn_pct)}%</span></div>
+              {q.promotion && <div className="kv"><span className="muted">Акция «{q.promotion.title}»</span><span>×{pct(q.promotion.multiplier)}</span></div>}
+              {!!q.birthday_boost && <div className="kv"><span className="muted">День рождения</span><span>+{pct(q.birthday_boost)}%</span></div>}
               <div className="kv"><span className="muted">Сумма заказов после</span><span>{fmt(q.spent_after)} ₽</span></div>
               <div className="kv"><span className="muted">Баланс после</span><span>{fmt(q.balance_after)} АРТ</span></div>
               <div className="res"><span className="soft sm">Начислим</span><b>+{fmt(q.earn)} АРТ</b></div>
@@ -201,6 +214,7 @@ export function Cassa({ initialCode, initialOrderId }: { initialCode?: string; i
           ) : (
             <>
               <div className="kv"><span className="muted">Клиент доплачивает</span><span>{fmt(q.paid)} ₽</span></div>
+              {!!q.gift_used && <div className="kv"><span className="muted">Из них сертификатом</span><span>{fmt(q.gift_used)} АРТ</span></div>}
               <div className="kv"><span className="muted">Начислим за доплату</span><span>+{fmt(q.earn)} АРТ · {pct(q.tier.earn_pct)}%</span></div>
               <div className="kv"><span className="muted">Баланс после</span><span>{fmt(q.balance_after)} АРТ</span></div>
               <div className="res"><span className="soft sm">Спишем</span><b>−{fmt(q.redeem)} АРТ</b></div>

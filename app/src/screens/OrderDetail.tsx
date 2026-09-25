@@ -1,5 +1,7 @@
 import { useState } from "react";
-import { call, useLoad, type OrderDetail as Detail } from "../api";
+import { call, uploadArt, useLoad, type GalleryItem, type OrderDetail as Detail } from "../api";
+import { prepareImage } from "../image";
+import { Lightbox, Thumb } from "./Collection";
 import { useNav } from "../nav";
 import { confirmDialog, haptic } from "../tg";
 import { Avatar, dmy, ErrorBox, fmt, hm, Loading, Section } from "../ui";
@@ -13,6 +15,9 @@ export function OrderDetail({ id }: { id: string }) {
   const { push, pop, toast } = useNav();
   const { data: o, error, loading, reload, setData } = useLoad<Detail>("order", { order_id: id });
   const [busy, setBusy] = useState(false);
+  const [uploading, setUploading] = useState(0);
+  const [nsfw, setNsfw] = useState(false);
+  const [open, setOpen] = useState<GalleryItem | null>(null);
 
   if (loading && !o) return <Loading />;
   if (error || !o) return <ErrorBox message={error ?? "Не удалось загрузить"} onRetry={reload} />;
@@ -33,6 +38,38 @@ export function OrderDetail({ id }: { id: string }) {
       toast((e as Error).message);
     } finally {
       setBusy(false);
+    }
+  }
+
+  async function upload(files: FileList | null) {
+    if (!files?.length) return;
+    const list = Array.from(files).slice(0, 10);
+    setUploading(list.length);
+    let added: GalleryItem[] = [];
+    for (const f of list) {
+      try {
+        added = [...added, await uploadArt(id, await prepareImage(f), nsfw)];
+      } catch (e) {
+        toast((e as Error).message);
+      }
+      setUploading((n) => n - 1);
+    }
+    if (added.length) {
+      haptic("success");
+      toast(added.length === 1 ? "Арт добавлен, клиент получил уведомление" : `Добавлено артов: ${added.length}`);
+      setData({ ...o!, gallery: [...o!.gallery, ...added] });
+    }
+  }
+
+  async function removeArt(item: GalleryItem) {
+    if (!(await confirmDialog("Удалить картинку из коллекции клиента?"))) return;
+    try {
+      await call("delete_art", { item_id: item.id });
+      setData({ ...o!, gallery: o!.gallery.filter((g) => g.id !== item.id) });
+      setOpen(null);
+      toast("Картинка удалена");
+    } catch (e) {
+      toast((e as Error).message);
     }
   }
 
@@ -96,6 +133,26 @@ export function OrderDetail({ id }: { id: string }) {
         </div>
       )}
 
+      {(o.gallery.length > 0 || o.is_artist) && (
+        <Section title="Арты" aside={o.gallery.length ? String(o.gallery.length) : undefined}>
+          {o.gallery.length > 0 && (
+            <div className="gallery-grid">{o.gallery.map((g) => <Thumb key={g.id} item={g} onOpen={() => setOpen(g)} />)}</div>
+          )}
+          {o.is_artist && !cancelled && (
+            <>
+              <label className="btn btn-ghost" style={{ cursor: "pointer" }}>
+                {uploading ? `Загружаем… (${uploading})` : "+ Приложить арт"}
+                <input type="file" accept="image/jpeg,image/png,image/webp" multiple hidden disabled={uploading > 0}
+                  onChange={(e) => { upload(e.target.files); e.target.value = ""; }} />
+              </label>
+              <label className="sm muted" style={{ display: "flex", gap: 8, alignItems: "center" }}>
+                <input type="checkbox" checked={nsfw} onChange={(e) => setNsfw(e.target.checked)} /> Пометить 18+ (картинка будет размыта)
+              </label>
+            </>
+          )}
+        </Section>
+      )}
+
       {o.payments.length > 0 && (
         <Section title="Оплаты">
           <div className="list">{o.payments.map((e) => <EntryRow key={e.id} e={e} />)}</div>
@@ -114,6 +171,11 @@ export function OrderDetail({ id }: { id: string }) {
           ))}
         </div>
       </Section>
+
+      {open && (
+        <Lightbox item={open} onClose={() => setOpen(null)}
+          actions={o.is_artist ? <button className="btn btn-sm" onClick={() => removeArt(open)}>Удалить</button> : undefined} />
+      )}
 
       {o.is_artist && !cancelled && (
         <>

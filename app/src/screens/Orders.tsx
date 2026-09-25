@@ -1,5 +1,6 @@
 import { useState } from "react";
-import { useLoad, type Order } from "../api";
+import { call, useLoad, type Order, type TierInfo } from "../api";
+import { confirmDialog, haptic } from "../tg";
 import { useNav } from "../nav";
 import { Avatar, dmy, ErrorBox, fmt, Loading, Section } from "../ui";
 
@@ -35,6 +36,51 @@ function split(list: Order[]) {
   return { active: list.filter((o) => o.status === "active"), rest: list.filter((o) => o.status !== "active") };
 }
 
+type SlotRequest = { id: string; comment: string; created_at: string; member: { name: string; code: string }; tier: TierInfo };
+
+function SlotRequests({ onDecided }: { onDecided: () => void }) {
+  const { toast, push } = useNav();
+  const { data, reload } = useLoad<SlotRequest[]>("slot_requests");
+  const [busy, setBusy] = useState<string | null>(null);
+  if (!data?.length) return null;
+
+  async function decide(r: SlotRequest, accept: boolean) {
+    if (!accept && !(await confirmDialog(`Отклонить заявку ${r.member.name}?`))) return;
+    setBusy(r.id);
+    try {
+      const res = await call<{ order: Order | null }>("decide_slot", { request_id: r.id, accept });
+      haptic("success");
+      toast(accept ? "Заявка принята, заказ создан" : "Заявка отклонена");
+      reload();
+      onDecided();
+      if (res.order) push({ name: "order", id: res.order.id });
+    } catch (e) {
+      toast((e as Error).message);
+    } finally {
+      setBusy(null);
+    }
+  }
+
+  return (
+    <Section title="Заявки на слоты" aside={String(data.length)}>
+      <div className="list">
+        {data.map((r) => (
+          <div className="li" key={r.id} style={{ alignItems: "flex-start" }}>
+            <div className="li-main">
+              <div className="li-top"><span style={{ fontWeight: 500 }}>{r.member.name} <span className="mono muted sm">{r.member.code}</span></span><span className="sm muted">{r.tier.name}</span></div>
+              {r.comment && <div className="soft sm">«{r.comment}»</div>}
+              <div className="row2">
+                <button className="btn btn-sm btn-primary" disabled={busy === r.id} onClick={() => decide(r, true)}>Принять</button>
+                <button className="btn btn-sm" disabled={busy === r.id} onClick={() => decide(r, false)}>Отклонить</button>
+              </div>
+            </div>
+          </div>
+        ))}
+      </div>
+    </Section>
+  );
+}
+
 /** Заказы художника. */
 export function ArtistOrders() {
   const { push } = useNav();
@@ -45,6 +91,7 @@ export function ArtistOrders() {
   const { active, rest } = split(data);
   return (
     <>
+      <SlotRequests onDecided={reload} />
       <button className="btn btn-primary" onClick={() => push({ name: "neworder" })}>+ Новый заказ</button>
       <Section title="В работе" aside={String(active.length)}>
         {active.length ? (

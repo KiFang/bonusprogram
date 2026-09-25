@@ -26,7 +26,7 @@ export function Invite({ code }: { code: string }) {
       haptic("success");
       await reloadMe();
       toast("Добро пожаловать в Артоки!");
-      reset({ name: "settings" });
+      reset({ name: "more" });
     } catch (e) {
       setError((e as Error).message);
       setBusy(false);
