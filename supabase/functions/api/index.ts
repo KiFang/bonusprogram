@@ -63,6 +63,7 @@ type Handler = (me: DbUser, p: Record<string, unknown>) => Promise<unknown>;
 
 const actions: Record<string, Handler> = {
   me: (me) => rpc("get_me", { p_user: me.id }),
+  onboarded: (me, p) => rpc("set_onboarded", { p_user: me.id, p_role: str(p.role) }),
 
   // ---- вступление и выход ----
   preview_program: async (_me, p) => {

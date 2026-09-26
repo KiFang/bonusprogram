@@ -20,6 +20,7 @@ import { NewOrder } from "./screens/NewOrder";
 import { Collection } from "./screens/Collection";
 import { Profile } from "./screens/Profile";
 import { Gift } from "./screens/Gift";
+import { Onboarding, type TutorialRole } from "./screens/Onboarding";
 import { CertificatesScreen, DonationsScreen, More, ProgramScreen, PromotionsScreen, SlotsScreen } from "./screens/ArtistTools";
 
 const ARTIST_TABS = ["cassa", "orders", "clients", "ops", "more"] as const;
@@ -37,6 +38,7 @@ export function App() {
   const [error, setError] = useState<string | null>(null);
   const [stack, setStack] = useState<Route[]>(() => [initialRoute()]);
   const [toastMsg, setToastMsg] = useState<string | null>(null);
+  const [tutorial, setTutorial] = useState<TutorialRole | null>(null);
   const toastTimer = useRef<number>();
 
   const loadMe = useCallback(async () => {
@@ -72,6 +74,7 @@ export function App() {
         window.clearTimeout(toastTimer.current);
         toastTimer.current = window.setTimeout(() => setToastMsg(null), 2800);
       },
+      showTutorial: setTutorial,
     };
   }, [me, route, loadMe]);
 
@@ -89,6 +92,22 @@ export function App() {
   useEffect(() => {
     window.scrollTo(0, 0);
   }, [route]);
+
+  // Мини-обучение при первом входе: художнику — про кассу, участнику — про кошелёк.
+  const role: TutorialRole | null = !me ? null
+    : me.artist ? (me.onboarded.artist ? null : "artist")
+    : me.onboarded.member || stack[0].name === "invite" ? null : "member";
+  useEffect(() => {
+    if (role) setTutorial(role);
+  }, [role]);
+
+  function finishTutorial() {
+    const done = tutorial;
+    setTutorial(null);
+    if (!done || !me || me.onboarded[done]) return;
+    setMe({ ...me, onboarded: { ...me.onboarded, [done]: true } });
+    call("onboarded", { role: done }).catch(() => null);
+  }
 
   if (!inTelegram) {
     return (
@@ -134,6 +153,7 @@ export function App() {
           </nav>
         )}
         {toastMsg && <div className="toast" role="status">{toastMsg}</div>}
+        {tutorial && <Onboarding role={tutorial} onDone={finishTutorial} />}
       </div>
     </NavContext.Provider>
   );

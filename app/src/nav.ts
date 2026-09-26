@@ -34,6 +34,7 @@ export type Nav = {
   reset(r: Route): void;
   reloadMe(): Promise<void>;
   toast(message: string): void;
+  showTutorial(role: "member" | "artist"): void;
 };
 
 export const NavContext = createContext<Nav | null>(null);

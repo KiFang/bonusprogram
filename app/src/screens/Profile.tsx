@@ -14,7 +14,7 @@ type Referrals = {
 type Application = { status: "pending" | "approved" | "rejected"; created_at: string } | null;
 
 export function Profile() {
-  const { me } = useNav();
+  const { me, showTutorial } = useNav();
   return (
     <>
       <MyCode />
@@ -22,6 +22,7 @@ export function Profile() {
       <InviteFriend />
       <GiftActivate />
       {!me.artist && <BecomeArtist />}
+      <button className="btn btn-ghost" onClick={() => showTutorial("member")}>Как работает Артоки</button>
     </>
   );
 }

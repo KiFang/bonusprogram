@@ -104,6 +104,7 @@ export type Me = {
     id: string; name: string; username: string | null; code: string;
     birth_day: number | null; birth_month: number | null; has_referrer: boolean;
   };
+  onboarded: { member: boolean; artist: boolean };
   artist: (Artist & { program: Program }) | null;
   programs: WalletProgram[];
 };
