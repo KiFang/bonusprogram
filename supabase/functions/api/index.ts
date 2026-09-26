@@ -1,6 +1,6 @@
 // API для Mini App. Каждый запрос подписан Telegram initData (заголовок X-Telegram-Init-Data).
 import { AppError, ART_BUCKET, artistIdByUser, db, rpc, signArt, upsertUser, type DbUser } from "../_shared/db.ts";
-import { botApi, validateInitData } from "../_shared/telegram.ts";
+import { botApi, STARS_ENABLED, validateInitData } from "../_shared/telegram.ts";
 import {
   artAddedText, cancelText, donationText, esc, giftText, operationText, orderCancelText, orderCreatedText,
   orderStageText, referralFriendText, referralText, slotDecisionText, slotRequestText, slotsOpenedText,
@@ -213,6 +213,7 @@ const actions: Record<string, Handler> = {
 
   // ---- оплата Stars ----
   stars_invoice: async (me, p) => {
+    if (!STARS_ENABLED) throw new AppError("Оплата звёздами отключена. Оплатите напрямую художнику.");
     const inv = await rpc<{ id: string; stars: number; title: string; description: string }>("create_stars_invoice", {
       p_user: me.id, p_kind: str(p.kind), p_target: str(p.target_id), p_scope: orNull(p.scope), p_arts: int(p.arts),
     });

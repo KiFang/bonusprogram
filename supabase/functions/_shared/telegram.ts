@@ -7,6 +7,9 @@ export type TgUser = {
   username?: string;
 };
 
+/** Оплата звёздами выключена: вывести звёзды в рубли художникам из РФ сложно. */
+export const STARS_ENABLED = false;
+
 const enc = new TextEncoder();
 
 async function hmac(key: Uint8Array<ArrayBuffer>, data: string): Promise<Uint8Array<ArrayBuffer>> {
