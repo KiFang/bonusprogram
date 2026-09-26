@@ -55,10 +55,22 @@ export function haptic(type: "success" | "error" | "warning") {
   }
 }
 
+/**
+ * Подтверждение через окно Telegram. Если предыдущее окно ещё закрывается, Telegram бросает
+ * WebAppPopupOpened — тогда пробуем ещё раз чуть позже, а не молча обрываем действие.
+ */
 export function confirmDialog(message: string): Promise<boolean> {
   return new Promise((resolve) => {
-    if (tg?.showConfirm && tg.isVersionAtLeast?.("6.2")) tg.showConfirm(message, resolve);
-    else resolve(window.confirm(message));
+    if (!tg?.showConfirm || !tg.isVersionAtLeast?.("6.2")) return resolve(window.confirm(message));
+    const open = (attempt: number) => {
+      try {
+        tg!.showConfirm!(message, (ok) => resolve(!!ok));
+      } catch {
+        if (attempt < 5) window.setTimeout(() => open(attempt + 1), 150);
+        else resolve(window.confirm(message));
+      }
+    };
+    open(0);
   });
 }
 

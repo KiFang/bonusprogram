@@ -6,7 +6,7 @@ import { copyText, digits, dmy, ErrorBox, fmt, hm, Loading, Section } from "../u
 
 /** Раздел «Настройки» художника. */
 export function More() {
-  const { me, push } = useNav();
+  const { me, push, showTutorial } = useNav();
   const items: [Route, string, string][] = [
     [{ name: "settings" }, "Уровни и этапы", "Пороги, проценты, ранний доступ, шаблон этапов заказа"],
     [{ name: "slots" }, "Слоты", "Открыть запись, уйти в отдых или брать без лимита"],
@@ -29,6 +29,7 @@ export function More() {
           </button>
         ))}
       </div>
+      <button className="btn btn-ghost" onClick={() => showTutorial("artist")}>Обучение художника</button>
     </>
   );
 }

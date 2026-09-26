@@ -39,15 +39,17 @@ export function History({ programId }: { programId: string }) {
   const { reset, reloadMe, toast } = useNav();
   const { data, error, loading, reload } = useLoad<{ program: Program; balance: number; history: Entry[] }>("history", { program_id: programId });
   const [busy, setBusy] = useState(false);
+  const [confirming, setConfirming] = useState(false);
   if (loading && !data) return <Loading />;
   if (error || !data) return <ErrorBox message={error ?? "Не удалось загрузить"} onRetry={reload} />;
 
-  // Два подтверждения: выход сжигает АРТы программы.
+  // Два подтверждения: окно Telegram, затем красный блок на экране. Выход сжигает АРТы программы.
+  async function askLeave() {
+    if (await confirmDialog(`Выйти из программы «${data!.program.name}»?`)) setConfirming(true);
+  }
+
   async function leave() {
     const name = data!.program.name;
-    if (!(await confirmDialog(`Выйти из программы «${name}»?`))) return;
-    const loss = data!.balance > 0 ? `Ваши ${fmt(data!.balance)} АРТ сгорят и не вернутся, даже если вы вступите снова.` : "История заказов сохранится.";
-    if (!(await confirmDialog(`Точно выйти? ${loss}`))) return;
     setBusy(true);
     try {
       await call("leave", { program_id: programId });
@@ -73,7 +75,22 @@ export function History({ programId }: { programId: string }) {
       ) : (
         <div className="sm muted">Операций пока нет.</div>
       )}
-      <button className="btn btn-ghost" disabled={busy} onClick={leave}>Выйти из программы</button>
+      {confirming ? (
+        <div className="danger-box" role="alert">
+          <div style={{ fontWeight: 600 }}>Точно выйти из «{data.program.name}»?</div>
+          <div className="sm soft">
+            {data.balance > 0
+              ? `Ваши ${fmt(data.balance)} АРТ сгорят и не вернутся, даже если вы вступите снова.`
+              : "АРТов на балансе нет. История операций сохранится у художника."}
+          </div>
+          <div className="row2">
+            <button className="btn" disabled={busy} onClick={() => setConfirming(false)}>Остаться</button>
+            <button className="btn btn-danger" disabled={busy} onClick={leave}>{busy ? "Выходим…" : "Да, выйти"}</button>
+          </div>
+        </div>
+      ) : (
+        <button className="btn btn-ghost" disabled={busy} onClick={askLeave}>Выйти из программы</button>
+      )}
     </>
   );
 }

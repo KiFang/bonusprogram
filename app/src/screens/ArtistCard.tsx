@@ -18,6 +18,7 @@ type Card = {
 };
 
 export function ArtistCard({ id }: { id: string }) {
+  const { me } = useNav();
   const { data, error, loading, reload } = useLoad<Card>("artist_card", { artist_id: id });
   const [giftScope, setGiftScope] = useState<"artist" | "group">("artist");
   if (loading && !data) return <Loading />;
@@ -40,7 +41,11 @@ export function ArtistCard({ id }: { id: string }) {
         </div>
       )}
 
-      <SlotsBlock artistId={a.id} slots={data.slots} isMember={data.is_member} onChange={reload} />
+      {me.artist?.program.id === program.id ? (
+        <div className="notice blue">Это ваша программа: художники не копят АРТы у своей группы и у себя.</div>
+      ) : (
+        <SlotsBlock artistId={a.id} slots={data.slots} isMember={data.is_member} onChange={reload} />
+      )}
 
       <div className="tiercard">
         <div className="sec-head">
