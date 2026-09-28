@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
-import { call, type Me } from "./api";
+import { call, DEMO, type Me } from "./api";
 import { NavContext, type Nav, type Route } from "./nav";
 import { inTelegram, tg } from "./tg";
 import { ErrorBox, Icon, Loading } from "./ui";
@@ -26,6 +26,7 @@ import { CertificatesScreen, DonationsScreen, More, ProgramScreen, PromotionsScr
 const ARTIST_TABS = ["cassa", "orders", "clients", "ops", "more"] as const;
 
 function initialRoute(): Route {
+  if (DEMO) return { name: "cassa" };
   const sp = tg?.initDataUnsafe?.start_param ?? "";
   if (sp.startsWith("j_")) return { name: "join", query: sp.slice(2) };
   if (sp.startsWith("inv_")) return { name: "invite", code: sp.slice(4) };
@@ -133,11 +134,19 @@ export function App() {
   return (
     <NavContext.Provider value={nav}>
       <div className={"screen" + (stack.length === 1 ? "" : " no-nav")}>
+        {DEMO && (
+          <div className="demobar">
+            <b>Демо</b> · данные выдуманные, всё можно нажимать. Коды клиентов: KF-ANYA, KF-DIMA, KF-LIZA
+          </div>
+        )}
         {me.artist && (
           <div className="modebar" role="group" aria-label="Режим">
             <button aria-pressed={!artistMode} onClick={() => nav.reset({ name: "wallet" })}>Кошелёк</button>
             <button aria-pressed={artistMode} onClick={() => nav.reset({ name: "cassa" })}>Касса художника</button>
           </div>
+        )}
+        {DEMO && stack.length > 1 && (
+          <button className="linkbtn sm backlink" onClick={nav.pop}>← Назад</button>
         )}
         <main className="content" key={stack.length + route.name}>
           <ErrorBoundary onReset={() => nav.reset({ name: "wallet" })}>{renderRoute(route)}</ErrorBoundary>

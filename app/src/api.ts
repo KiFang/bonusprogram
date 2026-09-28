@@ -3,8 +3,11 @@ import { tg } from "./tg";
 
 const API_URL = import.meta.env.VITE_API_URL as string;
 const KEY = (import.meta.env.VITE_SUPABASE_KEY as string) ?? "";
+/** Демо-сборка: без Telegram и сервера, данные выдуманные (см. src/demo/mock.ts). */
+export const DEMO = import.meta.env.VITE_DEMO === "1";
 
 export async function call<T>(action: string, params: Record<string, unknown> = {}): Promise<T> {
+  if (DEMO) return (await import("./demo/mock")).demoCall<T>(action, params);
   const headers: Record<string, string> = {
     "content-type": "application/json",
     "x-telegram-init-data": tg?.initData ?? "",
@@ -23,6 +26,7 @@ export async function call<T>(action: string, params: Record<string, unknown> = 
 
 /** Загрузка картинки к заказу (multipart). */
 export async function uploadArt(orderId: string, file: Blob, nsfw: boolean): Promise<GalleryItem> {
+  if (DEMO) return (await import("./demo/mock")).demoUpload(orderId, file, nsfw);
   const form = new FormData();
   form.append("order_id", orderId);
   form.append("nsfw", String(nsfw));
