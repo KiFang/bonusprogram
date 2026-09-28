@@ -109,7 +109,7 @@ seedOp("u_anya", "a_me", 6000, 0, 58); seedOp("u_anya", "a_shiro", 8000, 0, 45);
 seedOp("u_anya", "a_me", 5000, 400, 12);
 seedOp("u_dima", "a_me", 3500, 0, 38); seedOp("u_dima", "a_me", 4000, 0, 9, "inline");
 seedOp("u_liza", "a_me", 2500, 0, 4);
-seedOp("u_me", "a_fox", 9000, 0, 80); seedOp("u_me", "a_fox", 12000, 0, 50); seedOp("u_me", "a_fox", 6000, 800, 20);
+seedOp("u_me", "a_fox", 9000, 0, 80); seedOp("u_me", "a_fox", 12000, 0, 50); seedOp("u_me", "a_fox", 6000, 300, 20);
 seedOp("u_me", "a_mira", 15000, 0, 25); seedOp("u_me", "a_oak", 4000, 0, 6);
 addEntry({ user_id: "u_me", program_id: "p_fog", kind: "gift", points: 1000, created_at: ago(3), source: "gift" });
 
