@@ -136,7 +136,7 @@ export function App() {
       <div className={"screen" + (stack.length === 1 ? "" : " no-nav")}>
         {DEMO && (
           <div className="demobar">
-            <b>Демо</b> · данные выдуманные, всё можно нажимать. Коды клиентов: KF-ANYA, KF-DIMA, KF-LIZA
+            <b>Демо</b> · данные выдуманные, всё можно нажимать. Клиенты: KF-ANYA, KF-DIMA, KF-LIZA; новый клиент — KF-VIKA
           </div>
         )}
         {me.artist && (

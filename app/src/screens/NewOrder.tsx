@@ -1,5 +1,5 @@
 import { useEffect, useState } from "react";
-import { call, useLoad, type Order } from "../api";
+import { call, useLoad, type Order, type TierInfo } from "../api";
 import { useNav } from "../nav";
 import { haptic } from "../tg";
 import { digits, ErrorBox, fmt, Icon } from "../ui";
@@ -7,6 +7,7 @@ import { digits, ErrorBox, fmt, Icon } from "../ui";
 export function NewOrder({ code: initialCode }: { code?: string }) {
   const { push, pop, toast } = useNav();
   const settings = useLoad<{ artist: { order_stages: string[] } }>("settings");
+  const clients = useLoad<{ name: string; code: string; tier: TierInfo }[]>("clients");
   const [code, setCode] = useState(initialCode ?? "");
   const [title, setTitle] = useState("");
   const [price, setPrice] = useState(0);
@@ -19,6 +20,7 @@ export function NewOrder({ code: initialCode }: { code?: string }) {
   }, [settings.data, stages.length]);
 
   const validCode = /^KF-[2-9A-Z]{4}$/.test(code);
+  const client = clients.data?.find((c) => c.code === code);
   const canSave = validCode && title.trim().length > 0 && stages.length >= 2 && stages.every((s) => s.trim()) && !busy;
 
   async function save() {
@@ -44,6 +46,18 @@ export function NewOrder({ code: initialCode }: { code?: string }) {
         <label htmlFor="o-code">Код клиента</label>
         <input id="o-code" className="input mono" value={code} placeholder="KF-0000" autoComplete="off" spellCheck={false}
           onChange={(e) => setCode(e.target.value.toUpperCase().trim())} />
+        {client ? (
+          <div className="sm soft">Заказ для <b className="text">{client.name}</b> · {client.tier.name}</div>
+        ) : validCode ? (
+          <div className="hint">Этого клиента ещё нет в вашей программе — он вступит, когда вы создадите заказ.</div>
+        ) : (
+          <div className="hint">Код есть в кошельке клиента.{clients.data?.length ? " Или выберите:" : ""}</div>
+        )}
+        {!validCode && !!clients.data?.length && (
+          <div className="presets">
+            {clients.data.slice(0, 8).map((c) => <button key={c.code} onClick={() => setCode(c.code)}>{c.name} · {c.code}</button>)}
+          </div>
+        )}
       </div>
       <div className="field">
         <label htmlFor="o-title">Что рисуем</label>
@@ -75,7 +89,7 @@ export function NewOrder({ code: initialCode }: { code?: string }) {
             </button>
           )}
         </div>
-        <div className="sm muted">Последний этап означает «готово». Шаблон этапов меняется во вкладке «Уровни».</div>
+        <div className="sm muted">Этапы только для этого заказа. Последний означает «готово». Шаблон для всех новых заказов — в «Настройки → Уровни и этапы».</div>
       </div>
 
       {error && <ErrorBox message={error} />}

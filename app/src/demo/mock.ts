@@ -44,6 +44,7 @@ const users: U[] = [
   { id: "u_dima", name: "Дима", username: "dimasik", code: "KF-DIMA" },
   { id: "u_liza", name: "Лиза", username: null, code: "KF-LIZA" },
   { id: "u_shiro_u", name: "Широ", username: "shiro", code: "KF-SH7R" },
+  { id: "u_new", name: "Вика", username: null, code: "KF-VIKA" },
 ];
 
 const artists: A[] = [
@@ -239,11 +240,13 @@ function quote(p: Record<string, unknown>, commit: boolean): Quote {
   const m = userByCode(String(p.code ?? ""));
   if (m.id === ME.id) fail("Нельзя начислять АРТы самому себе");
   const prog = programOf(a.program_id);
+  const mode = String(p.mode) as "earn" | "redeem";
+  let joining = false;
   if (!isMember(m.id, a.program_id)) {
     if (m.id === "u_shiro_u") fail("Художник не может быть участником программы своей группы");
-    fail(`${m.name} ещё не в программе «${prog.name}»`);
+    if (mode === "redeem") fail(`${m.name} ещё не в программе «${prog.name}», АРТов для оплаты нет`);
+    joining = true;
   }
-  const mode = String(p.mode) as "earn" | "redeem";
   const amount = Math.max(0, Math.trunc(Number(p.amount) || 0));
   if (amount <= 0) fail("Сумма должна быть больше нуля");
   const sp = spent(m.id, a.id);
@@ -273,11 +276,12 @@ function quote(p: Record<string, unknown>, commit: boolean): Quote {
     tier: { index: t.index, name: t.name, earn_pct: t.earn_pct, pay_pct: t.pay_pct, foreign_pct: t.foreign_pct },
     new_tier: { index: nt.index, name: nt.name }, tier_up: nt.index > t.index,
     member: { name: m.name, code: m.code }, program: { name: prog.name, type: prog.type },
-    multiplier: mult, promotion: promo, order: order ? { id: order.id, title: order.title } : null,
+    multiplier: mult, promotion: promo, order: order ? { id: order.id, title: order.title } : null, joining,
     orders: orders.filter((o) => o.artist_id === a.id && o.user_id === m.id && o.status !== "cancelled")
       .map((o) => ({ id: o.id, title: o.title, price: o.price, stage_name: o.stages[o.stage] })),
   };
   if (commit) {
+    if (joining) memberships.push({ user_id: m.id, program_id: a.program_id, joined_at: new Date().toISOString() });
     const e = addEntry({
       user_id: m.id, program_id: a.program_id, artist_id: a.id, kind: mode === "redeem" ? "redeem" : "accrual", order_amount: amount,
       paid_amount: paid, earned: earn, redeemed: redeem, points: earn - redeem, tier: { name: t.name, earn_pct: t.earn_pct, pay_pct: t.pay_pct },
@@ -435,8 +439,9 @@ const handlers: Record<string, (p: P) => unknown> = {
   order: (p) => orderDetail(orders.find((o) => o.id === s(p.order_id)) ?? fail("Заказ не найден")),
   create_order: (p) => {
     const m = userByCode(s(p.code));
-    if (!isMember(m.id, myArtist().program_id)) fail(`${m.name} ещё не в программе`);
-    if (!s(p.title).trim()) fail("Назовите заказ");
+    if (m.id === "u_shiro_u") fail("Художник не может быть участником программы своей группы");
+    if (!s(p.title).trim()) fail("Название заказа — от 1 до 80 символов");
+    if (!isMember(m.id, myArtist().program_id)) memberships.push({ user_id: m.id, program_id: myArtist().program_id, joined_at: new Date().toISOString() });
     const o: O = {
       id: uid("o"), artist_id: myArtist().id, user_id: m.id, title: s(p.title).trim(), price: p.price ? Number(p.price) : null,
       stages: (p.stages as string[] | null) ?? [...myArtist().order_stages], stage: 0, status: "active",

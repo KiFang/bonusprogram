@@ -1,15 +1,17 @@
 import { useEffect, useState } from "react";
 import { call, useLoad, type Certificate, type Fundraiser, type Program, type Promotion, type Slots } from "../api";
 import { useNav, type Route } from "../nav";
-import { haptic, shareLink } from "../tg";
+import { confirmDialog, haptic, shareLink } from "../tg";
 import { copyText, digits, dmy, ErrorBox, fmt, hm, Loading, Section } from "../ui";
 
 /** Раздел «Настройки» художника. */
+const SLOT_MODE = { open: "запись открыта", rest: "отдых", unlimited: "без лимита" } as const;
+
 export function More() {
   const { me, push, showTutorial } = useNav();
   const items: [Route, string, string][] = [
     [{ name: "settings" }, "Уровни и этапы", "Пороги, проценты, ранний доступ, шаблон этапов заказа"],
-    [{ name: "slots" }, "Слоты", "Открыть запись, уйти в отдых или брать без лимита"],
+    [{ name: "slots" }, "Слоты", `Сейчас: ${SLOT_MODE[me.artist?.slots_mode ?? "unlimited"]}. Открыть запись, уйти в отдых или брать без лимита`],
     [{ name: "promotions" }, "Акции", "Множитель АРТов на время, например ×2 на выходных"],
     [{ name: "certificates" }, "Сертификаты", "Выпустить подарочный сертификат и отправить клиенту"],
     [{ name: "donations" }, "Донаты", "Ссылки для поддержки и АРТы за донаты"],
@@ -37,7 +39,7 @@ export function More() {
 // ---- Слоты ----
 
 export function SlotsScreen() {
-  const { toast } = useNav();
+  const { toast, reloadMe } = useNav();
   const { data, error, loading, reload } = useLoad<{ slots: Slots; artist: { slots_total: number } }>("settings");
   const [mode, setMode] = useState<Slots["mode"]>("unlimited");
   const [total, setTotal] = useState(3);
@@ -52,6 +54,13 @@ export function SlotsScreen() {
   if (loading && !data) return <Loading />;
   if (error || !data) return <ErrorBox message={error ?? "Не удалось загрузить"} onRetry={reload} />;
   const s = data.slots;
+  const announce = mode === "open" && (s.mode !== "open" || total > s.total);
+  const changed = mode !== s.mode || (mode === "open" && total !== s.total);
+  const cta = !changed ? "Всё сохранено"
+    : announce ? `Открыть ${total} ${plural(total, "слот", "слота", "слотов")} и уведомить клиентов`
+    : mode === "rest" ? "Уйти в отдых"
+    : mode === "unlimited" ? "Принимать заявки без лимита"
+    : "Сохранить";
 
   async function save() {
     setBusy(true);
@@ -60,6 +69,7 @@ export function SlotsScreen() {
       haptic("success");
       toast(r.announce ? "Слоты открыты, клиенты получили уведомление" : "Сохранено");
       reload();
+      reloadMe();
     } catch (e) {
       toast((e as Error).message);
     } finally {
@@ -79,13 +89,13 @@ export function SlotsScreen() {
         <div className="field">
           <label htmlFor="sl-total">Сколько слотов</label>
           <input id="sl-total" className="input mono" inputMode="numeric" value={total || ""} onChange={(e) => setTotal(Math.min(digits(e.target.value), 100))} />
-          <div className="sm muted">Занятый слот — это активный заказ. Уровни с ранним доступом (задаётся в «Уровнях») увидят слоты раньше остальных.</div>
+          <div className="sm muted">Занятый слот — это активный заказ. Уровни с ранним доступом (Настройки → Уровни и этапы) смогут записаться раньше остальных.</div>
         </div>
       )}
       <div className="sm soft" style={{ lineHeight: 1.5 }}>
-        {mode === "open" && "Клиенты нажимают «Хочу заказ» в вашей карточке, вы принимаете заявку — и она становится заказом."}
+        {mode === "open" && "Клиенты нажимают «Хочу заказ» в вашей карточке. Заявки появятся во вкладке «Заказы»: принимаете — и заявка становится заказом. При открытии слотов клиенты программы получат уведомление в бот."}
         {mode === "rest" && "Кнопка заявки скрыта, клиенты видят, что вы отдыхаете."}
-        {mode === "unlimited" && "Заявки принимаются без ограничения числа."}
+        {mode === "unlimited" && "Клиенты могут оставить заявку в любой момент, число заказов не ограничено. Заявки появятся во вкладке «Заказы»."}
       </div>
       <div className="summary">
         <div className="kv"><span className="muted">Сейчас</span><span>{s.mode === "open" ? "открыты" : s.mode === "rest" ? "отдых" : "без лимита"}</span></div>
@@ -93,9 +103,14 @@ export function SlotsScreen() {
         {s.mode === "open" && <div className="kv"><span className="muted">Свободно</span><span>{s.free} из {s.total}</span></div>}
         {s.opened_at && s.mode === "open" && <div className="kv"><span className="muted">Открыты</span><span>{dmy(s.opened_at)} {hm(s.opened_at)}</span></div>}
       </div>
-      <div className="cta"><button className="btn btn-primary" disabled={busy} onClick={save}>{busy ? "Сохраняем…" : "Сохранить"}</button></div>
+      <div className="cta"><button className="btn btn-primary" disabled={busy || !changed} onClick={save}>{busy ? "Сохраняем…" : cta}</button></div>
     </>
   );
+}
+
+function plural(n: number, one: string, few: string, many: string) {
+  const m10 = n % 10, m100 = n % 100;
+  return m10 === 1 && m100 !== 11 ? one : m10 >= 2 && m10 <= 4 && (m100 < 12 || m100 > 14) ? few : many;
 }
 
 // ---- Донаты ----
@@ -200,9 +215,10 @@ export function PromotionsScreen() {
     }
   }
 
-  async function remove(id: string) {
+  async function remove(p: Promotion) {
+    if (!(await confirmDialog(`Удалить акцию «${p.title}»?`))) return;
     try {
-      setData(await call<Promotion[]>("delete_promotion", { id }));
+      setData(await call<Promotion[]>("delete_promotion", { id: p.id }));
       toast("Акция удалена");
     } catch (e) {
       toast((e as Error).message);
@@ -220,7 +236,7 @@ export function PromotionsScreen() {
                 <div className="li-top"><span style={{ fontWeight: 500 }}>{p.title}</span><span className="status-chip active">×{String(Number(p.multiplier)).replace(".", ",")}</span></div>
                 <div className="mono muted xs">{dmy(p.starts_at)} {hm(p.starts_at)} — {dmy(p.ends_at)} {hm(p.ends_at)}{p.active ? " · идёт" : ""}</div>
               </div>
-              <button className="btn btn-sm" onClick={() => remove(p.id)}>Удалить</button>
+              <button className="btn btn-sm" onClick={() => remove(p)}>Удалить</button>
             </div>
           ))}
         </div>
@@ -234,7 +250,7 @@ export function PromotionsScreen() {
           <label className="field"><span className="sm muted">Начало</span><input className="input" type="datetime-local" value={starts} onChange={(e) => setStarts(e.target.value)} /></label>
           <label className="field"><span className="sm muted">Конец</span><input className="input" type="datetime-local" value={ends} onChange={(e) => setEnds(e.target.value)} /></label>
         </div>
-        <div className="sm muted">Пока акция идёт, начисление АРТов умножается. Клиенты видят её в вашей карточке.</div>
+        <div className="sm muted">Пока акция идёт, начисление АРТов умножается: ×2 при ставке 5% даёт клиенту 10%. Клиенты видят акцию в вашей карточке.</div>
         {err && <ErrorBox message={err} />}
         <button className="btn btn-primary" disabled={busy} onClick={create}>{busy ? "Создаём…" : "Создать акцию"}</button>
       </Section>
@@ -273,9 +289,10 @@ export function CertificatesScreen() {
     }
   }
 
-  async function voidCert(id: string) {
+  async function voidCert(c: Certificate) {
+    if (!(await confirmDialog(`Аннулировать сертификат ${c.code} на ${fmt(c.amount)} АРТ? Активировать его будет нельзя.`))) return;
     try {
-      await call("void_certificate", { id });
+      await call("void_certificate", { id: c.id });
       toast("Сертификат аннулирован");
       reload();
     } catch (e) {
@@ -290,7 +307,7 @@ export function CertificatesScreen() {
       <div className="h2">Подарочные сертификаты</div>
       {issued && (
         <div className="linkcard">
-          <div className="eyebrow">Готово</div>
+          <div className="eyebrow">Готово — отправьте ссылку тому, кто покупал</div>
           <div className="h2">{fmt(issued.amount)} АРТ · <span className="mono">{issued.code}</span></div>
           <div className="mono sm gold" style={{ wordBreak: "break-all" }}>{issued.link}</div>
           <div className="row2">
@@ -302,8 +319,8 @@ export function CertificatesScreen() {
       <Section title="Выпустить">
         {group && (
           <div className="seg" role="group" aria-label="Вид">
-            <button aria-pressed={scope === "artist"} onClick={() => setScope("artist")}>Мой</button>
-            <button aria-pressed={scope === "group"} onClick={() => setScope("group")}>Группы</button>
+            <button aria-pressed={scope === "artist"} onClick={() => setScope("artist")}>На меня</button>
+            <button aria-pressed={scope === "group"} onClick={() => setScope("group")}>На всю группу</button>
           </div>
         )}
         <div className="presets">
@@ -328,7 +345,7 @@ export function CertificatesScreen() {
                     <span className="muted xs">
                       {c.scope === "group" ? "группы" : `@${c.artist?.nick}`} · {STATUS[c.status]}{c.activated_by ? ` · ${c.activated_by}` : ""}{c.paid_via === "stars" ? " · Stars" : ""} · {dmy(c.created_at)}
                     </span>
-                    {c.status === "issued" && c.paid_via === "artist" && <button className="btn btn-sm" onClick={() => voidCert(c.id)}>Аннулировать</button>}
+                    {c.status === "issued" && c.paid_via === "artist" && <button className="btn btn-sm" onClick={() => voidCert(c)}>Аннулировать</button>}
                   </div>
                 </div>
               </div>

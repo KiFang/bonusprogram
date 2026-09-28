@@ -1,8 +1,16 @@
 import { useEffect, useRef, useState } from "react";
-import { call, type Quote } from "../api";
-import { useNav } from "../nav";
-import { canScanQr, haptic, scanQr } from "../tg";
-import { digits, ErrorBox, fmt, Icon, pct, signed, TierChip } from "../ui";
+import { call, useLoad, type Quote, type TierInfo } from "../api";
+import { BOT_USERNAME, joinLink, useNav } from "../nav";
+import { canScanQr, haptic, scanQr, shareLink } from "../tg";
+import { copyText, digits, ErrorBox, fmt, Icon, pct, signed, TierChip } from "../ui";
+
+type Client = { name: string; code: string; username: string | null; tier: TierInfo; balance: number };
+
+const MODE_HINT = {
+  earn: "Клиент заплатил вам деньгами — начислим АРТы по его уровню.",
+  redeem: "Клиент оплачивает часть заказа АРТами, остальное — деньгами. АРТы за доплату тоже начислятся.",
+  donate: "Клиент задонатил вам напрямую — отметьте донат. АРТы за донаты начисляются, если вы включили их в «Настройки → Донаты».",
+};
 
 const PRESETS = [1500, 3000, 5000, 10000];
 
@@ -12,7 +20,8 @@ function parseCode(raw: string): string {
 }
 
 export function Cassa({ initialCode, initialOrderId }: { initialCode?: string; initialOrderId?: string }) {
-  const { me, toast } = useNav();
+  const { me, toast, push } = useNav();
+  const clients = useLoad<Client[]>("clients");
   const [code, setCode] = useState(initialCode ?? "");
   const [mode, setMode] = useState<"earn" | "redeem" | "donate">("earn");
   const [amount, setAmount] = useState(0);
@@ -95,17 +104,20 @@ export function Cassa({ initialCode, initialOrderId }: { initialCode?: string; i
   const overLimit = mode === "redeem" && q && redeem !== null && redeem > q.max_redeem;
   const canCommit = !!q && !busy && !overLimit && (mode !== "redeem" || q.redeem > 0);
   const label =
-    !validCode ? "Введите код участника"
+    !validCode ? "Выберите или введите код клиента"
       : amount <= 0 ? "Введите сумму"
       : !q ? "Считаем…"
       : mode === "donate" ? `Отметить донат ${fmt(amount)} ₽`
       : mode === "earn" ? `Начислить ${fmt(q.earn)} АРТ`
-      : q.redeem > 0 ? `Списать ${fmt(q.redeem)} АРТ` : "Нечего списать";
+      : q.redeem > 0 ? `Оплатить ${fmt(q.redeem)} АРТ` : "У клиента нет АРТов для оплаты";
+  const pickClient = (c: string) => { setCode(c); setOrderId(null); setDone(null); };
+  const noClients = clients.data?.length === 0;
 
   return (
     <>
+      {noClients && !validCode && <FirstSteps />}
       <div className="field">
-        <label htmlFor="f-code">Код участника</label>
+        <label htmlFor="f-code">Код клиента</label>
         <div className="row-input">
           <input
             id="f-code"
@@ -123,6 +135,19 @@ export function Cassa({ initialCode, initialOrderId }: { initialCode?: string; i
             <button className="btn icon" onClick={scan} aria-label="Сканировать QR-код">{Icon.scan}</button>
           )}
         </div>
+        {!validCode && (
+          <div className="hint">
+            Код вида KF-7Q2M есть в кошельке клиента{canScanQr() ? " — можно отсканировать его QR кнопкой справа" : ""}.
+            {!!clients.data?.length && " Или выберите клиента:"}
+          </div>
+        )}
+        {!validCode && !!clients.data?.length && (
+          <div className="presets">
+            {clients.data.slice(0, 8).map((c) => (
+              <button key={c.code} onClick={() => pickClient(c.code)}>{c.name} · {c.code}</button>
+            ))}
+          </div>
+        )}
       </div>
 
       {quote && validCode && (
@@ -137,7 +162,13 @@ export function Cassa({ initialCode, initialOrderId }: { initialCode?: string; i
           <TierChip name={quote.tier.name} index={quote.tier.index} />
         </div>
       )}
+      {quote?.joining && validCode && !done && (
+        <div className="notice blue">{quote.member.name} ещё не в программе «{quote.program.name}» — вступит автоматически, когда вы начислите АРТы.</div>
+      )}
       {quoteError && validCode && <ErrorBox message={quoteError} />}
+      {quoteError && validCode && /не найден/.test(quoteError) && (
+        <div className="hint">Проверьте код в кошельке клиента. Если клиент ещё ни разу не открывал бота, отправьте ему ссылку из вкладки «Клиенты».</div>
+      )}
 
       {quote && validCode && mode !== "donate" && (quote.orders?.length ?? 0) > 0 && (
         <div className="field">
@@ -155,9 +186,10 @@ export function Cassa({ initialCode, initialOrderId }: { initialCode?: string; i
 
       <div className="seg seg3" role="group" aria-label="Тип операции">
         <button aria-pressed={mode === "earn"} onClick={() => { setMode("earn"); setRedeem(null); }}>Начислить</button>
-        <button aria-pressed={mode === "redeem"} onClick={() => setMode("redeem")}>Списать</button>
+        <button aria-pressed={mode === "redeem"} onClick={() => setMode("redeem")}>Оплата АРТами</button>
         <button aria-pressed={mode === "donate"} onClick={() => { setMode("donate"); setRedeem(null); setOrderId(null); }}>Донат</button>
       </div>
+      <div className="hint">{MODE_HINT[mode]}</div>
 
       <div className="field">
         <label htmlFor="f-amount">{mode === "earn" ? "Клиент оплатил" : mode === "donate" ? "Сумма доната" : "Сумма заказа"}</label>
@@ -179,7 +211,7 @@ export function Cassa({ initialCode, initialOrderId }: { initialCode?: string; i
 
       {mode === "redeem" && (
         <div className="field">
-          <label htmlFor="f-redeem">Списать АРТов</label>
+          <label htmlFor="f-redeem">Сколько АРТов списать</label>
           <input
             id="f-redeem"
             className="input mono"
@@ -192,7 +224,7 @@ export function Cassa({ initialCode, initialOrderId }: { initialCode?: string; i
             <div className="sm muted" style={{ lineHeight: 1.5 }}>
               Лимит «{q.tier.name}»: {pct(q.tier.pay_pct)}% заказа = {fmt(q.pay_limit)} АРТ.
               {q.foreign_cap !== null && q.foreign_available > 0 && ` АРТов других художников — не больше ${fmt(q.foreign_cap)}.`}
-              {" "}Можно списать до {fmt(q.max_redeem)}.
+              {" "}Можно списать до {fmt(q.max_redeem)}. Оставьте поле пустым — спишем максимум.
             </div>
           )}
         </div>
@@ -229,10 +261,13 @@ export function Cassa({ initialCode, initialOrderId }: { initialCode?: string; i
           Готово: {signed(done.points)} АРТ. Уведомление ушло клиенту в бот. Отменить операцию можно в течение 24 часов во вкладке «Операции».
         </div>
       )}
+      {done && mode !== "donate" && (
+        <button className="btn" onClick={() => push({ name: "neworder", code: done.member.code })}>Создать заказ для {done.member.name}</button>
+      )}
 
       {!done && me.artist && (
         <div className="hint">
-          Начислять можно и прямо в переписке с клиентом: наберите <span className="mono gold">@{import.meta.env.VITE_BOT_USERNAME || "бот"} 3000</span> и отправьте карточку.
+          Начислять можно и прямо в переписке с клиентом: наберите <span className="mono gold">@{BOT_USERNAME} 3000</span> и отправьте карточку — клиент нажмёт «Забрать АРТы».
         </div>
       )}
 
@@ -244,5 +279,42 @@ export function Cassa({ initialCode, initialOrderId }: { initialCode?: string; i
         )}
       </div>
     </>
+  );
+}
+
+/** Первые шаги для художника, у которого ещё нет клиентов. */
+function FirstSteps() {
+  const { me, push, toast } = useNav();
+  const program = me.artist!.program;
+  const link = joinLink(program.slug);
+  return (
+    <div className="linkcard">
+      <div className="eyebrow">Первые шаги</div>
+      <div className="list" style={{ width: "100%" }}>
+        <button className="li" onClick={() => push({ name: "settings" })}>
+          <div className="li-main">
+            <span style={{ fontWeight: 500 }}>1. Проверьте уровни</span>
+            <span className="sm muted">Сколько АРТов получает клиент и какую часть заказа может ими оплатить. Можно оставить как есть.</span>
+          </div>
+          <span className="muted" aria-hidden="true">›</span>
+        </button>
+        <div className="li">
+          <div className="li-main">
+            <span style={{ fontWeight: 500 }}>2. Позовите клиентов</span>
+            <span className="sm muted">Ссылка открывает бота и сразу записывает человека в «{program.name}».</span>
+            <div className="row2" style={{ marginTop: 6 }}>
+              <button className="btn btn-sm" onClick={() => shareLink(link, `Копите АРТы за заказы у меня: ${link}`)}>Отправить</button>
+              <button className="btn btn-sm" onClick={async () => toast((await copyText(link)) ? "Ссылка скопирована" : "Скопируйте ссылку вручную")}>Скопировать</button>
+            </div>
+          </div>
+        </div>
+        <div className="li">
+          <div className="li-main">
+            <span style={{ fontWeight: 500 }}>3. Начислите первые АРТы</span>
+            <span className="sm muted">После оплаты попросите код из кошелька клиента и введите его ниже. Если клиент ещё не в программе, он вступит сам.</span>
+          </div>
+        </div>
+      </div>
+    </div>
   );
 }

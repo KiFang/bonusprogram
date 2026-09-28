@@ -166,6 +166,8 @@ export type Quote = {
   order: { id: string; title: string } | null;
   orders?: { id: string; title: string; price: number | null; stage_name: string }[];
   entry_id?: string;
+  /** Клиента ещё нет в программе: вступит при начислении. */
+  joining?: boolean;
 };
 
 export type Order = {

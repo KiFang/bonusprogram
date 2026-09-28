@@ -27,6 +27,7 @@ declare
   other_u uuid := (upsert_user(302, 'other_art', 'Другой', null)).id;
   cli users := upsert_user(401, null, 'Лена', null);
   outsider users := upsert_user(402, null, 'Чужой', null);
+  newbie users := upsert_user(403, null, 'Новичок', null);
   grp uuid; r jsonb; ord uuid; ord2 uuid;
 begin
   grp := (create_group('Орден', 'orden') ->> 'id')::uuid;
@@ -34,8 +35,8 @@ begin
   perform accept_invite(other_u, create_invite(1, null) ->> 'code');
   perform join_program(cli.id, grp, 'test');
 
-  perform pg_temp.fails(format('select create_order(%L, %L, ''Портрет'', 5000, null)', art_u, outsider.member_code),
-    'ещё не в вашей программе', 'заказ только участнику');
+  perform create_order(art_u, newbie.member_code, 'Скетч', 1000, null);
+  perform pg_temp.eq(exists (select 1 from memberships where user_id = newbie.id and program_id = grp), true, 'заказ записывает клиента в программу');
   perform pg_temp.fails(format('select create_order(%L, %L, '''', 5000, null)', art_u, cli.member_code),
     'от 1 до 80', 'пустое название');
   perform pg_temp.fails(format('select create_order(%L, %L, ''X'', 1, %L)', art_u, cli.member_code, '{Один}'),
@@ -77,7 +78,7 @@ begin
   perform pg_temp.eq((get_order(art_u, ord) ->> 'is_artist')::boolean, true, 'художник видит как художник');
   perform pg_temp.fails(format('select get_order(%L, %L)', outsider.id, ord), 'не найден', 'посторонний не видит заказ');
   perform pg_temp.fails(format('select commit_operation(%L, %L, ''earn'', 100, null, %L)', other_u, cli.member_code, ord),
-    'не в программе', 'чужой художник не платит по заказу');
+    'не найден', 'чужой художник не платит по заказу');
 
   -- отмена
   perform cancel_order(art_u, ord2);
@@ -85,7 +86,7 @@ begin
   perform pg_temp.fails(format('select commit_operation(%L, %L, ''earn'', 100, null, %L)', art_u, cli.member_code, ord2),
     'не найден', 'по отменённому не платят');
   perform pg_temp.eq(jsonb_array_length(member_orders(cli.id)), 1, 'клиент не видит отменённые');
-  perform pg_temp.eq(jsonb_array_length(artist_orders(art_u)), 2, 'художник видит все');
+  perform pg_temp.eq(jsonb_array_length(artist_orders(art_u)), 3, 'художник видит все');
 
   -- шаблон этапов
   perform pg_temp.eq(save_order_stages(art_u, array['Бриф', 'Лайн', 'Цвет', 'Готово']), '["Бриф", "Лайн", "Цвет", "Готово"]'::jsonb, 'свой шаблон');
