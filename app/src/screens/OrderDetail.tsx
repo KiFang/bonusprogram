@@ -116,12 +116,13 @@ export function OrderDetail({ id }: { id: string }) {
                 <span className="dot" />
                 <span className="name">{s}</span>
                 {o.is_artist && !cancelled && i !== o.stage && (
-                  <button className="linkbtn sm" disabled={busy} onClick={() => setStage(i)}>сюда</button>
+                  <button className="linkbtn sm" disabled={busy} onClick={() => setStage(i)}>перейти</button>
                 )}
               </li>
             );
           })}
         </ol>
+        {o.is_artist && !cancelled && <div className="hint">Клиент получает уведомление о каждом этапе. «Перейти» — если нужно вернуться назад или перескочить этап.</div>}
       </Section>
 
       {(o.price || o.paid > 0) && (
@@ -148,6 +149,7 @@ export function OrderDetail({ id }: { id: string }) {
               <label className="sm muted" style={{ display: "flex", gap: 8, alignItems: "center" }}>
                 <input type="checkbox" checked={nsfw} onChange={(e) => setNsfw(e.target.checked)} /> Пометить 18+ (картинка будет размыта)
               </label>
+              <div className="hint">Арты попадут в коллекцию клиента, он получит уведомление.</div>
             </>
           )}
         </Section>
@@ -179,7 +181,7 @@ export function OrderDetail({ id }: { id: string }) {
 
       {o.is_artist && !cancelled && (
         <>
-          <button className="btn" onClick={() => push({ name: "cassa", code: o.member.code, orderId: o.id })}>Принять оплату по заказу</button>
+          <button className="btn" onClick={() => push({ name: "cassa", code: o.member.code, orderId: o.id })}>Отметить оплату по заказу</button>
           <button className="btn btn-ghost" disabled={busy} onClick={cancel}>Отменить заказ</button>
           <div className="cta">
             {o.stage < last ? (

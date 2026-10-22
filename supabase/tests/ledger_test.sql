@@ -44,7 +44,9 @@ begin
   -- вступление
   perform pg_temp.eq(resolve_program('«Полночь»'), grp, 'поиск группы по названию');
   perform pg_temp.eq(resolve_program('@InkFox'), grp, 'поиск группы по нику художника');
-  perform pg_temp.fails(format('select commit_operation(%L, %L, ''earn'', 1000, null)', ink_u, kira.member_code), 'ещё не в программе', 'нельзя начислить не участнику');
+  perform pg_temp.fails(format('select commit_operation(%L, %L, ''redeem'', 1000, null)', ink_u, kira.member_code), 'ещё не в программе', 'не участник не платит АРТами');
+  perform pg_temp.eq((quote_operation(ink_u, kira.member_code, 'earn', 1000, null) ->> 'joining')::boolean, true, 'касса предупреждает о вступлении');
+  perform pg_temp.eq(exists (select 1 from memberships where user_id = kira.id), false, 'расчёт не записывает в программу');
   perform pg_temp.eq((join_program(kira.id, grp, 'link') ->> 'joined')::boolean, true, 'вступление');
   perform pg_temp.eq((join_program(kira.id, grp, 'link') ->> 'joined')::boolean, false, 'повторное вступление');
 

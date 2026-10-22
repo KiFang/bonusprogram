@@ -45,5 +45,5 @@ export function useNav(): Nav {
   return n;
 }
 
-export const BOT_USERNAME = (import.meta.env.VITE_BOT_USERNAME as string) ?? "";
+export const BOT_USERNAME = (import.meta.env.VITE_BOT_USERNAME as string | undefined) || "artoki_bot";
 export const joinLink = (slug: string) => `https://t.me/${BOT_USERNAME}?startapp=j_${slug}`;

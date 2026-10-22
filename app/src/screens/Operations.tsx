@@ -38,6 +38,7 @@ export function Operations() {
         <div className="stat"><div className="eyebrow">Оплачено деньгами</div><div className="h2">{fmt(data.paid_total)} ₽</div></div>
         <div className="stat"><div className="eyebrow">Операций</div><div className="h2">{live}</div></div>
       </div>
+      {data.items.length > 0 && <div className="hint">Ошибочную операцию можно отменить в течение 24 часов — клиент получит уведомление, баланс пересчитается.</div>}
       {data.items.length === 0 ? (
         <div className="sm muted">Операций пока нет. Начислите АРТы в кассе или прямо в чате с клиентом.</div>
       ) : (

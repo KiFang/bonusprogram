@@ -1,0 +1,18 @@
+# HTTPS-сертификат Caddy выпускает и продлевает сам. Домен должен указывать на этот сервер (запись A).
+{$DOMAIN} {
+	encode zstd gzip
+
+	# Сначала короткий срок: убедитесь, что сайт открывается по HTTPS, потом увеличьте до года (31536000).
+	header Strict-Transport-Security "max-age=300"
+
+	# Ограничение тела запроса (загрузки изображений появятся позже; пока достаточно небольшого лимита).
+	request_body {
+		max_size 12MB
+	}
+
+	# /healthz снаружи не нужен
+	@internal path /healthz
+	respond @internal 404
+
+	reverse_proxy app:3000
+}

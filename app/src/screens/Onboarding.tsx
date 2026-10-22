@@ -3,7 +3,7 @@ import { BOT_USERNAME } from "../nav";
 
 export type TutorialRole = "member" | "artist";
 
-const BOT = BOT_USERNAME || "artoki_bot";
+const BOT = BOT_USERNAME;
 
 type Slide = { mark: string; title: string; text: string; points?: string[] };
 

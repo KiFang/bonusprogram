@@ -1,0 +1,90 @@
+# Запуск: docker compose up -d --build   (подробности в README.md)
+# Порядок: db → migrate (один раз) → app → caddy. Снаружи открыты только 80 и 443.
+services:
+  db:
+    image: postgres:16-alpine
+    restart: unless-stopped
+    environment:
+      POSTGRES_USER: artchieve
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:?задайте POSTGRES_PASSWORD в .env}
+      POSTGRES_DB: artchieve
+      TZ: Europe/Moscow
+      PGTZ: Europe/Moscow
+    # Настройки под сервер на 4 ГБ, где база делит память с приложением.
+    command: >
+      postgres
+      -c shared_buffers=512MB
+      -c effective_cache_size=1536MB
+      -c work_mem=8MB
+      -c max_connections=50
+      -c timezone=Europe/Moscow
+    volumes:
+      - dbdata:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U artchieve -d artchieve"]
+      interval: 5s
+      timeout: 3s
+      retries: 20
+
+  migrate:
+    build:
+      context: .
+      target: migrate
+    environment:
+      DATABASE_URL: postgres://artchieve:${POSTGRES_PASSWORD}@db:5432/artchieve
+    depends_on:
+      db:
+        condition: service_healthy
+    restart: "no"
+
+  app:
+    build:
+      context: .
+      target: app
+    restart: unless-stopped
+    environment:
+      DATABASE_URL: postgres://artchieve:${POSTGRES_PASSWORD}@db:5432/artchieve
+      SITE_URL: ${SITE_URL:?задайте SITE_URL в .env}
+      SESSION_SECRET: ${SESSION_SECRET:?задайте SESSION_SECRET в .env}
+      SMTP_HOST: ${SMTP_HOST:-}
+      SMTP_PORT: ${SMTP_PORT:-465}
+      SMTP_USER: ${SMTP_USER:-}
+      SMTP_PASSWORD: ${SMTP_PASSWORD:-}
+      MAIL_FROM: ${MAIL_FROM:-}
+      TRUST_PROXY: "1"
+      TZ: Europe/Moscow
+    depends_on:
+      db:
+        condition: service_healthy
+      migrate:
+        condition: service_completed_successfully
+    healthcheck:
+      test: ["CMD", "wget", "-qO-", "http://127.0.0.1:3000/healthz"]
+      interval: 15s
+      timeout: 5s
+      retries: 5
+      start_period: 20s
+    # Приложение наружу не публикуется: доступно только через Caddy.
+    expose:
+      - "3000"
+
+  caddy:
+    image: caddy:2-alpine
+    restart: unless-stopped
+    environment:
+      DOMAIN: ${DOMAIN:?задайте DOMAIN в .env}
+    ports:
+      - "80:80"
+      - "443:443"
+    volumes:
+      - ./deploy/Caddyfile:/etc/caddy/Caddyfile:ro
+      - caddy_data:/data
+      - caddy_config:/config
+    depends_on:
+      app:
+        condition: service_healthy
+
+volumes:
+  dbdata:
+  caddy_data:
+  caddy_config:

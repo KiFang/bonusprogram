@@ -1,5 +1,6 @@
 import { useLoad, type TierInfo } from "../api";
 import { joinLink, useNav } from "../nav";
+import { shareLink } from "../tg";
 import { copyText, ErrorBox, fmt, Loading, Progress, Section, TierChip, tierColor } from "../ui";
 
 type Client = { name: string; code: string; username: string | null; tier: TierInfo; balance: number };
@@ -21,8 +22,12 @@ export function Clients() {
     <>
       <div className="linkcard">
         <div className="eyebrow">Ссылка для клиентов</div>
+        <div className="sm soft">Открывает бота и сразу записывает человека в «{program.name}». Можно поставить в профиль, пост или отправить в личку.</div>
         <div className="mono sm gold" style={{ wordBreak: "break-all" }}>{link}</div>
-        <button className="btn btn-sm" onClick={async () => toast((await copyText(link)) ? "Ссылка скопирована" : "Скопируйте ссылку вручную")}>Скопировать</button>
+        <div className="row2" style={{ width: "100%" }}>
+          <button className="btn btn-sm" onClick={() => shareLink(link, `Копите АРТы за заказы у меня: ${link}`)}>Отправить</button>
+          <button className="btn btn-sm" onClick={async () => toast((await copyText(link)) ? "Ссылка скопирована" : "Скопируйте ссылку вручную")}>Скопировать</button>
+        </div>
       </div>
 
       {Object.keys(counts).length > 0 && (
@@ -40,8 +45,10 @@ export function Clients() {
 
       <Section title={`Участники «${program.name}»`} aside={String(data.length)}>
         {data.length === 0 ? (
-          <div className="sm muted">Пока никого. Отправьте клиентам ссылку выше.</div>
+          <div className="sm muted">Пока никого. Отправьте клиентам ссылку выше — или просто начислите АРТы в кассе по коду клиента, он вступит сам.</div>
         ) : (
+          <>
+          <div className="hint">Нажмите на клиента, чтобы открыть кассу с его кодом.</div>
           <div className="list">
             {data.map((c) => (
               <button className="li" key={c.code} onClick={() => push({ name: "cassa", code: c.code })}>
@@ -57,6 +64,7 @@ export function Clients() {
               </button>
             ))}
           </div>
+          </>
         )}
       </Section>
     </>

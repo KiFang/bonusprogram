@@ -28,6 +28,7 @@ declare
   su  uuid := (upsert_user(803, 'rule_solo', 'Соло', null)).id;
   late users := upsert_user(804, 'rule_late', 'Поздняя', null);
   c   users := upsert_user(805, null, 'Клиент', null);
+  late2 users := upsert_user(806, null, 'Новенький', null);
   grp uuid; solo uuid; a1 uuid; a2id uuid; r jsonb; cert text;
 begin
   grp := (create_group('Правила', 'rules') ->> 'id')::uuid;
@@ -47,7 +48,7 @@ begin
   perform pg_temp.fails(format('select record_donation(%L, %L, 1000)', a1u, a2.member_code), 'Художник не может', 'донат от коллеги не начисляет');
   cert := issue_certificate(a1u, 'group', 1000, '') ->> 'code';
   perform pg_temp.fails(format('select activate_certificate(%L, %L)', a2.id, cert), 'Художник не может', 'коллега не активирует сертификат группы');
-  perform pg_temp.fails(format('select commit_operation(%L, %L, ''earn'', 1000, null)', a1u, a2.member_code), 'ещё не в программе', 'касса не начисляет коллеге');
+  perform pg_temp.fails(format('select commit_operation(%L, %L, ''earn'', 1000, null)', a1u, a2.member_code), 'Художник не может', 'касса не начисляет коллеге');
 
   -- Клиент с АРТами становится художником группы: участие снимается, АРТы сгорают.
   perform join_program(late.id, grp, 'test');
@@ -66,6 +67,12 @@ begin
   perform pg_temp.eq((r -> 'referral' ->> 'referrer_bonus')::int, 0, 'художник-пригласивший без награды в своей группе');
   perform pg_temp.eq((r -> 'referral' ->> 'friend_bonus')::int, 50, 'друг получил бонус');
   perform pg_temp.eq(exists (select 1 from memberships where user_id = a2.id and program_id = grp), false, 'пригласивший не стал участником');
+
+  -- Касса: новый клиент вступает при первом начислении.
+  perform pg_temp.eq((commit_operation(su, late2.member_code, 'earn', 2000, null) ->> 'joining')::boolean, true, 'первое начисление записывает в программу');
+  perform pg_temp.eq(exists (select 1 from memberships where user_id = late2.id and program_id = solo), true, 'клиент вступил');
+  perform pg_temp.eq(_balance(late2.id, solo), 60::bigint, 'и получил АРТы');
+  perform pg_temp.eq((commit_operation(su, late2.member_code, 'earn', 1000, null) ->> 'joining')::boolean, false, 'второй раз — уже участник');
 
   -- Выход работает.
   perform pg_temp.eq((leave_program(a1u, solo) ->> 'forfeited')::bigint, 0::bigint, 'выход из программы');

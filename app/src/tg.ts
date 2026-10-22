@@ -33,7 +33,7 @@ declare global {
 }
 
 export const tg: WebApp | undefined = window.Telegram?.WebApp;
-export const inTelegram = !!tg?.initData;
+export const inTelegram = import.meta.env.VITE_DEMO === "1" || !!tg?.initData;
 
 export function initTelegram() {
   if (!tg) return;
@@ -55,19 +55,49 @@ export function haptic(type: "success" | "error" | "warning") {
   }
 }
 
+/** Подтверждение внутри страницы — вне Telegram (демо), где системных окон может не быть. */
+function pageConfirm(message: string): Promise<boolean> {
+  return new Promise((resolve) => {
+    const wrap = document.createElement("div");
+    wrap.className = "page-confirm";
+    wrap.setAttribute("role", "dialog");
+    wrap.setAttribute("aria-modal", "true");
+    const box = document.createElement("div");
+    box.className = "page-confirm-box";
+    const text = document.createElement("div");
+    text.textContent = message;
+    const row = document.createElement("div");
+    row.className = "row2";
+    const no = document.createElement("button");
+    no.className = "btn";
+    no.textContent = "Отмена";
+    const yes = document.createElement("button");
+    yes.className = "btn btn-primary";
+    yes.textContent = "OK";
+    const done = (v: boolean) => { wrap.remove(); resolve(v); };
+    no.onclick = () => done(false);
+    yes.onclick = () => done(true);
+    row.append(no, yes);
+    box.append(text, row);
+    wrap.append(box);
+    document.body.append(wrap);
+    yes.focus();
+  });
+}
+
 /**
  * Подтверждение через окно Telegram. Если предыдущее окно ещё закрывается, Telegram бросает
  * WebAppPopupOpened — тогда пробуем ещё раз чуть позже, а не молча обрываем действие.
  */
 export function confirmDialog(message: string): Promise<boolean> {
   return new Promise((resolve) => {
-    if (!tg?.showConfirm || !tg.isVersionAtLeast?.("6.2")) return resolve(window.confirm(message));
+    if (!tg?.showConfirm || !tg.isVersionAtLeast?.("6.2") || !tg.initData) return pageConfirm(message).then(resolve);
     const open = (attempt: number) => {
       try {
         tg!.showConfirm!(message, (ok) => resolve(!!ok));
       } catch {
         if (attempt < 5) window.setTimeout(() => open(attempt + 1), 150);
-        else resolve(window.confirm(message));
+        else pageConfirm(message).then(resolve);
       }
     };
     open(0);
